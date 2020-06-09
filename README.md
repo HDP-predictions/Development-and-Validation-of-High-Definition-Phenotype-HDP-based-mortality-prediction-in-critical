@@ -11,7 +11,7 @@ Additional Packages:
 
 -- Table 4: "Summary of NSIS (LRM & LSTM) mortality detection performance at different time points" is generated from X1_hour_LSTM_Table_4.ipynb, X1_hour_LRM_Table_4.ipynb, X2_week_LSTM_Table_4.ipynb and X2_week_LRM_Table_4.ipynb. (X1 = 1,6,12,48 & X2=1,2,3,4) 
 
--- Supplementary Figure S1(a,b,c) and Supplementary Figure S5(a,b,c,d,e): "Bubble plot for intake of nutrition according to gestation group" is generated from Bubble plot ALL.R
+-- Supplementary eTable 6: "Comparison of CRIB (12 hours), CRIB II (1 hour) SNAP-II (12 hours), SNAPPE-II (12 hours), NSIS (LRM &LSTM) (48th)hour for predicting death and discharge." is generated from CRIB_eTable_6.ipynb, CRIB_2_eTable_6.ipynb and SNAPPE-2 SNAP-2_eTable_6.ipynb
 
 -- Supplementary Figure S2(a) and S2(b): "Medication deviation across gestation group" is generated from Medication bar chart.R
 
