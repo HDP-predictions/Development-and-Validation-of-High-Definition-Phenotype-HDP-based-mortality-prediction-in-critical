@@ -17,7 +17,7 @@ Additional Packages:
 
 -- Supplementary eTable 9 : "Performance of combination of continuous parameters using LSTM" is generated from eTable_9.csv using 'data_8th_june.csv'.
 
--- Supplementary Figure S4(a,b,c,d): "Patient frequency vs LOS for various gestation categories" is generated from Supplementary 4.R
+-- Supplementary eTable11: "Performance of individual intermittent parameters with fixed and continuous using LSTM" is generated from xx_eTable_11.ipynb using 'data_8th_june.csv'.
 
 -- Supplementary Table S2(a,b,c): "Medicines deviation statistics" is generated from Medication tables.R
 
