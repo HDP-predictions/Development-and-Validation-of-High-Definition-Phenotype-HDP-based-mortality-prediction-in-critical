@@ -15,7 +15,7 @@ Additional Packages:
 
 -- Supplementary eTable 8: "Performance of individual continuous parameters using LSTM" is generated from eTable_8.ipynb using the file 'data_8th_june.csv'
 
--- Supplementary Figure S3 : "Clinical diagnosis distribution across gestational age groups" is generated from Morbidity stacks.R
+-- Supplementary eTable 9 : "Performance of combination of continuous parameters using LSTM" is generated from eTable_9.csv using 'data_8th_june.csv'.
 
 -- Supplementary Figure S4(a,b,c,d): "Patient frequency vs LOS for various gestation categories" is generated from Supplementary 4.R
 
