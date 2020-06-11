@@ -5,7 +5,7 @@ Additional Packages:
 1.Tensorflow => 1.14.0
 2.Plotly
 
--- Table 2: "Baseline characteristics of the population" is generated from Baseline_Table_2.ipynb
+-- Table 2: "Baseline characteristics of the population" is generated from Baseline_Table_2.ipynb using 'baseline.csv'
 
 -- Table 3: "Ablation experiment for contribution of fixed, intermittent and continuous during mortality prediction" is generated from LSTM_ablation_Table_3.ipynb and LRM_ablation_Table_3.ipynb using files 'data_8th_june.csv' and 'data_stat.csv'. 
 
