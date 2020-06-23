@@ -20,7 +20,7 @@ Additional Packages:
 
 -- Supplementary Table 9 : "Performance of combination of continuous parameters using LSTM" is generated from Table_9.csv using 'data_23_june.csv'.
 
--- Supplementary Table 10 : "eTable 10: Performance of individual intermittent parameters using LSTM" is generated from Table_10.csv using 'death_new_3.csv' and .'discharge_new_3.csv'
+-- Supplementary Table 10 : "eTable 10: Performance of individual intermittent parameters using LSTM" is generated from Table_10.csv using 'death_new_4.csv' and .'discharge_new_4.csv'
 
 
 -- Supplementary Table11: "Performance of individual intermittent parameters with fixed and continuous using LSTM" is generated from Table_11.ipynb using 'data_23_june.csv'.
