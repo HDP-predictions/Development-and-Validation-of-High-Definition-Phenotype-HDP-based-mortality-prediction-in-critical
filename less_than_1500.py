@@ -34,7 +34,7 @@ from random import shuffle
 con = psycopg2.connect (user = 'postgres',
                 password = 'postgres',
                 port = '5432',
-                host = 'localhost',                
+                host = 'localhost',
                 database = 'inicudb')
 
 cur  = con.cursor()
@@ -86,6 +86,7 @@ def mean_confidence_interval(data, confidence=0.95):
 # Function to select random patients
 
 def randomize(dis,dea):
+    #Unnamed: 0 is used as a proxy for LOS in minutes
     df = pd.DataFrame(columns=dis.columns)
     dis_less_26 = dis[dis['gestation']<=26]
     dea_less_26 = dea[dea['gestation']<=26]
@@ -101,7 +102,7 @@ def randomize(dis,dea):
         x_dis = dis_less_26[dis_less_26['Unnamed: 0']>=l]
         ids_dis = set(x_dis.uhid.unique())
         ids = list(ids_dis - ids_dis.intersection(tk))
-        
+
         shuffle(ids)
         x = dis_less_26[dis_less_26['uhid']==ids[0]]
         x = x[:len(x_dea)]
@@ -110,7 +111,7 @@ def randomize(dis,dea):
         tk = set(taken)
         df = df.append(y,ignore_index=True)
     taken = []
-    tk = set()    
+    tk = set()
     dis_less_28 = dis[(dis['gestation']>26)&(dis['gestation']<=28)]
     dea_less_28 = dea[(dea['gestation']>26)&(dea['gestation']<=28)]
     dis_less_28.sort_values(['Unnamed: 0','uhid'],ascending=False)
@@ -131,7 +132,7 @@ def randomize(dis,dea):
         tk = set(taken)
         df = df.append(y,ignore_index=True)
     taken = []
-    tk = set()   
+    tk = set()
     dis_less_32 = dis[(dis['gestation']>28)&(dis['gestation']<=32)]
     dea_less_32 = dea[(dea['gestation']>28)&(dea['gestation']<=32)]
     dis_less_32.sort_values(['Unnamed: 0','uhid'],ascending=False)
@@ -152,7 +153,7 @@ def randomize(dis,dea):
         tk = set(taken)
         df = df.append(y,ignore_index=True)
     taken = []
-    tk = set()   
+    tk = set()
     dis_32 = dis[dis['gestation']>32]
     dea_32 = dea[dea['gestation']>32]
     dis_32.sort_values(['Unnamed: 0','uhid'],ascending=False)
@@ -172,16 +173,16 @@ def randomize(dis,dea):
         taken.append(ids[0])
         tk = set(taken)
         df = df.append(y,ignore_index=True)
-        
- 
-        
-        
-        
-          
-        
-    
+
+
+
+
+
+
+
+
     #df = pd.DataFrame(columns=dt.columns)
-    
+
     #shuffle(ids)
     #uhid = ids[:50]
     #for i in uhid:
@@ -205,7 +206,7 @@ cont = ['pulserate',
 def make_lstm(gs):
     #gs1 = gs[gs['birthweight']<=1500]
     #gs2 = gs[(gs['birthweight']>2500)&(gs['birthweight']<3000)]
-    
+
     #balancing the dataset
     #death1 = gs1[gs1['dischargestatus']==1]
     #death_l1 = death1.uhid.unique()
@@ -297,7 +298,7 @@ def lstm_model(n,gd):
     auc_roc_inter = []
     val_a = []
     train_a = []
-    
+
 
     for i in range(25):
         try:
@@ -363,7 +364,7 @@ a = []
 
 
 for i in range(5):
-    
+
     gs1 = gs[gs['birthweight']<=1500]
     gs2 = gs[(gs['birthweight']>2500)&(gs['birthweight']<3000)]
 
@@ -382,8 +383,8 @@ for i in range(5):
     d1 = randomize(dis1,death1)
     d2 = randomize(dis2,death2)
     gw = pd.concat([d1,d2])
-    
-   
+
+
 
     fixed = ['dischargestatus',  'gender', 'birthweight',
            'birthlength', 'birthheadcircumference', 'inout_patient_status',
@@ -540,26 +541,22 @@ for i in range(5):
 # In[ ]:
 
 print('Fixed')
-print(mean_confidence_interval(list(itertools.chain(*f_a)))
+print(mean_confidence_interval(list(itertools.chain(*f_a))))
 print('Inter')
-print(mean_confidence_interval(list(itertools.chain(*i_a)))
+print(mean_confidence_interval(list(itertools.chain(*i_a))))
 print('Cont')
-print(mean_confidence_interval(list(itertools.chain(*c_a)))
+print(mean_confidence_interval(list(itertools.chain(*c_a))))
 print('Cont+inter')
-print(mean_confidence_interval(list(itertools.chain(*ci_a)))
+print(mean_confidence_interval(list(itertools.chain(*ci_a))))
 print('Fixed+Inter')
-print(mean_confidence_interval(list(itertools.chain(*fi_a)))
+print(mean_confidence_interval(list(itertools.chain(*fi_a))))
 print('Cont+Fixed')
-print(mean_confidence_interval(list(itertools.chain(*cf_a)))
+print(mean_confidence_interval(list(itertools.chain(*cf_a))))
 print('All')
-print(mean_confidence_interval(list(itertools.chain(*a)))
+print(mean_confidence_interval(list(itertools.chain(*a))))
 
 
 
 
 
 # In[ ]:
-
-
-
-
