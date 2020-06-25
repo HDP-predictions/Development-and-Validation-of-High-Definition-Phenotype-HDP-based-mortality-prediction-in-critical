@@ -53,8 +53,8 @@ es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weight
 # In[ ]:
 
 print("2222")
-gs = pd.read_csv('5th_june_all_2.csv')
-gs.drop('Unnamed: 0',axis=1,inplace=True)
+#gs = pd.read_csv('5th_june_all_2.csv')
+#gs.drop('Unnamed: 0',axis=1,inplace=True)
 
 #gs.drop('Unnamed: 0.1',axis=1,inplace=True)
 print("111")
@@ -89,33 +89,21 @@ def randomize(dt):
 
     return df
 
-#Function for converting data to multiples of 15
-def range_finder(x):
-    length = x
-    fractional = (x/15.0) - math.floor(x/15.0)
-    return int(round(fractional*15))
-
-
-cont = ['pulserate',
-       'ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
-
-gd = gs[cont]
-
-def make_lstm(gs):
+def generatePatients(gs):
     gs1 = gs[gs['birthweight']<=1500]
-    gs2 = gs[(gs['birthweight']>=2500)&(gs['birthweight']<=3000)]
+    gs2 = gs[(gs['birthweight']>2500)&(gs['birthweight']<3000)]
     
     #balancing the dataset
     death1 = gs1[gs1['dischargestatus']==1]
     death2 = gs2[gs2['dischargestatus']==1]
     dis1 = gs1[gs1['dischargestatus']==0]
     dis2 = gs2[gs2['dischargestatus']==0]
-    print(len(dis))
+    print(len(dis1))
     final = pd.DataFrame()
     final_df = pd.DataFrame(columns=gs.columns)
     d1 = randomize(dis1)
     d2 = randomize(dis2)
-    print(len(d))
+    print(len(d1))
     d1 = d1[:len(death1)]
     d2 = d2[:len(death2)]
     gd = pd.concat([death1,d1,death2,d2])
@@ -131,6 +119,22 @@ def make_lstm(gs):
 
 
     final_df.fillna(-999,inplace=True)
+    return final_df
+
+#Function for converting data to multiples of 15
+def range_finder(x):
+    length = x
+    fractional = (x/15.0) - math.floor(x/15.0)
+    return int(round(fractional*15))
+
+
+cont = ['pulserate',
+       'ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
+
+#gd = gs[cont]
+
+def make_lstm(final_df):
+    
 
 
     # In[ ]:
@@ -245,12 +249,13 @@ def lstm_model(n,gd):
             train_a.append(t_a)
             auc_roc_inter.append(roc_auc_score(y_answer,y_pred))
             continue
-        except:
-            continue
+        except Exception as e:
+            print(e)
     return auc_roc_inter,list(itertools.chain(*val_a)),list(itertools.chain(*train_a))
 
-
-
+#patients = generatePatients(gs)
+#patients.to_csv('24th_balanced_data.csv')
+patients = pd.read_csv('24th_balanced_data.csv')
 fixed = ['dischargestatus',  'gender', 'birthweight',
        'birthlength', 'birthheadcircumference', 'inout_patient_status',
        'gestationweekbylmp', 'gestationdaysbylmp',
@@ -261,7 +266,7 @@ fixed = ['dischargestatus',  'gender', 'birthweight',
 
 # In[ ]:
 
-gd = gs[fixed]
+gd = patients[fixed]
 
 
 
@@ -269,20 +274,20 @@ gd = gs[fixed]
 
 
 
-an = lstm_model(18,gd)
+#an = lstm_model(18,gd)
 
-f_a = mean_confidence_interval(an[0])
-
-
-f_b = mean_confidence_interval(an[1])
+#f_a = mean_confidence_interval(an[0])
 
 
+#f_b = mean_confidence_interval(an[1])
 
-f_c = mean_confidence_interval(an[2])
 
-print('Fixed')
-print(f_a,f_b,f_c)
-print(an[0])
+
+#f_c = mean_confidence_interval(an[2])
+
+#print('Fixed')
+#print(f_a,f_b,f_c)
+#print(an[0])
 
 
 
@@ -304,23 +309,24 @@ inter = ['dischargestatus', 'mean_bp',
 # In[ ]:
 
 
-gd = gs[inter]
+
+gd = patients[inter]
 
 
-an = lstm_model(26,gd)
+#an = lstm_model(26,gd)
 
-i_a = mean_confidence_interval(an[0])
-i_b = mean_confidence_interval(an[1])
-i_c = mean_confidence_interval(an[2])
+#i_a = mean_confidence_interval(an[0])
+#i_b = mean_confidence_interval(an[1])
+#i_c = mean_confidence_interval(an[2])
 
-print('Inter')
-print(i_a,i_b,i_c)
-print(an[0])
+#print('Inter')
+#print(i_a,i_b,i_c)
+#print(an[0])
 cont = ['pulserate',
        'ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
 
 
-gd = gs[cont]
+gd = patients[cont]
 
 an = lstm_model(4,gd)
 
@@ -336,6 +342,79 @@ c_c = mean_confidence_interval(an[2])
 print('Cont')
 print(c_a,c_b,c_c)
 print(an[0])
+
+cont_inter = list(set(cont+inter))
+gd = patients[cont_inter]
+
+an = lstm_model(30,gd)
+
+ci_a = mean_confidence_interval(an[0])
+
+
+ci_b = mean_confidence_interval(an[1])
+
+
+
+ci_c = mean_confidence_interval(an[2])
+
+print('Cont_Inter')
+print(ci_a,ci_b,ci_c)
+print(an[0])
+
+
+fixed_inter = list(set(fixed+inter))
+
+
+gd = patients[fixed_inter]
+an = lstm_model(44,gd)
+
+fi_a = mean_confidence_interval(an[0])
+
+
+fi_b = mean_confidence_interval(an[1])
+
+
+
+fi_c = mean_confidence_interval(an[2])
+
+print('Fixed_Inter')
+print(fi_a,fi_b,fi_c)
+print(an[0])
+
+cont_fixed = list(set(cont+fixed))
+gd = patients[cont_fixed]
+an = lstm_model(22,gd)
+
+cf_a = mean_confidence_interval(an[0])
+
+
+cf_b = mean_confidence_interval(an[1])
+
+
+
+cf_c = mean_confidence_interval(an[2])
+
+print('Fixed_Cont')
+print(cf_a,cf_b,cf_c)
+print(an[0])
+
+all_cols = list(set(cont+inter+fixed))
+gd = patients[all_cols]
+
+an = lstm_model(48,gd)
+a = mean_confidence_interval(an[0])
+b = mean_confidence_interval(an[1])
+c = mean_confidence_interval(an[2])
+
+print('All')
+print(a,b,c)
+print(an[0])
+
+
+
+
+
+
 
 
 
