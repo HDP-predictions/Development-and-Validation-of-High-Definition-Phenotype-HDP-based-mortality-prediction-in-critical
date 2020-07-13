@@ -220,13 +220,8 @@ def read_prepare_data(patientCaseUHID,caseType,conditionCase,folderName):
         print('Exception in data preparation', e)
         PrintException()
         return None
-def prepare_data(patientCaseUHID,caseType,conditionCase,folderName):
+def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
     try:      
-        con = psycopg2.connect (user = 'postgres',
-                        password = 'postgres',
-                        port = '5433',
-                        host = 'localhost',                
-                        database = 'inicudb')
         cur  = con.cursor()
         path = os.getcwd()
         #caseType = 'Discharge'

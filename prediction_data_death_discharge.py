@@ -29,7 +29,12 @@ typeOfCase = ""
 deathCase = 1
 dischargeCase = 0
 print("---------Balancing Data----------")
-balanceDS = balanceDataset()
+con = psycopg2.connect (user = 'postgres',
+                password = 'postgres',
+                port = '5433',
+                host = 'localhost',                
+                database = 'inicudb')
+balanceDS = balanceDataset(con)
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
@@ -54,9 +59,9 @@ for row in balanceDS.itertuples():
             typeOfCase = "Discharge"
         print('patientCaseUHID',patientCaseUHID,'caseType',typeOfCase,'conditionCase',conditionCase,'folderName',folderName)
         # uncomment below to generate data first time
-        fileName,uhidDataSet = prepare_data(patientCaseUHID,typeOfCase,conditionCase,folderName)
+        #fileName,uhidDataSet = prepare_data(con,patientCaseUHID,typeOfCase,conditionCase,folderName)
         # uncomment below in case csv data is already generated and now lstm needs to be executed
-        #fileName,uhidDataSet = read_prepare_data(patientCaseUHID,typeOfCase,conditionCase,folderName)
+        fileName,uhidDataSet = read_prepare_data(patientCaseUHID,typeOfCase,conditionCase,folderName)
         print('UHID',patientCaseUHID,'data preperation done total number of colums built=',len(uhidDataSet))
         visualFlag = visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
         print('UHID',patientCaseUHID,'data visualization done')
@@ -78,15 +83,12 @@ fixed = ['dischargestatus',  'gender', 'birthweight',
 inter = ['dischargestatus', 'mean_bp',
        'sys_bp', 'dia_bp', 'peep', 'pip', 'map', 'tidalvol',
        'minvol', 'ti', 'fio2',
-       'abd_difference_y',
-       'abdomen_girth_y', 'currentdateheight', 'currentdateweight',
-
+       'abd_difference_y', 'currentdateheight', 'currentdateweight',
        'new_ph', 'rbs',
        'stool_day_total', 'temp',
        'total_intake', 'totalparenteralvolume',
        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
-       'urine', 'urine_per_hour',
-       'urine_per_kg_hour', 'uhid']
+       'urine', 'urine_per_hour', 'uhid']
 cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
 print('1columns=',preparedData.columns)
 predictLSTM(preparedData, fixed, cont, inter)

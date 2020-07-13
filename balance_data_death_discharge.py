@@ -213,13 +213,7 @@ def randomize(dis,dea):
     return df
 
 
-def balanceDataset():
-    con = psycopg2.connect (user = 'postgres',
-                    password = 'postgres',
-                    port = '5433',
-                    host = 'localhost',                
-                    database = 'inicudb')
-
+def balanceDataset(con):
     cur  = con.cursor()
     #print("connected to database")
 
