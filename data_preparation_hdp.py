@@ -241,7 +241,9 @@ def prepare_data(patientCaseUHID,caseType,conditionCase,folderName):
         print ('data preparation started for',fileName)    
         #Fixed Parameters
         cur10 = con.cursor()
-        queryStr = "SELECT t1.uhid,t1.dateofbirth,t1.timeofbirth,t1.timeofadmission,t1.dateofadmission,t1.gender,t1.birthweight,t1.birthlength,t1.birthheadcircumference,t1.inout_patient_status,t1.gestationweekbylmp,t1.gestationdaysbylmp,t1.baby_type,t1.central_temp,t1.dischargeddate,t2.apgar_onemin,t2.apgar_fivemin,t2.apgar_tenmin,t3.motherage,t4.conception_type,t4.mode_of_delivery,t5.steroidname,t5.numberofdose,t1.dischargestatus  FROM "+schemaName+".baby_detail AS t1 LEFT JOIN "+schemaName+".birth_to_nicu AS t2 ON t1.uhid=t2.uhid LEFT JOIN "+schemaName+".parent_detail AS t3 ON t1.uhid=t3.uhid LEFT JOIN "+schemaName+".antenatal_history_detail AS t4 ON t1.uhid=t4.uhid LEFT JOIN "+schemaName+".antenatal_steroid_detail AS t5 ON t1.uhid=t5.uhid where t1.timeofadmission is not null and t1.timeofbirth is not null and t1.uhid = '"+patientCaseUHID+"';"
+
+
+        queryStr = "SELECT t1.uhid,t1.dateofbirth,t1.timeofbirth,t1.timeofadmission,t1.dateofadmission,t1.gender,t1.birthweight,t1.birthlength,t1.birthheadcircumference,t1.inout_patient_status,round( CAST((t1.gestationweekbylmp + t1.gestationdaysbylmp/7::float) as numeric),2) as gestation, t1.gestationweekbylmp,t1.gestationdaysbylmp,t1.baby_type,t1.central_temp,t1.dischargeddate,t2.apgar_onemin,t2.apgar_fivemin,t2.apgar_tenmin,t3.motherage,t4.conception_type,t4.mode_of_delivery,t5.steroidname,t5.numberofdose,t1.dischargestatus  FROM "+schemaName+".baby_detail AS t1 LEFT JOIN "+schemaName+".birth_to_nicu AS t2 ON t1.uhid=t2.uhid LEFT JOIN "+schemaName+".parent_detail AS t3 ON t1.uhid=t3.uhid LEFT JOIN "+schemaName+".antenatal_history_detail AS t4 ON t1.uhid=t4.uhid LEFT JOIN "+schemaName+".antenatal_steroid_detail AS t5 ON t1.uhid=t5.uhid where t1.timeofadmission is not null and t1.timeofbirth is not null and t1.uhid = '"+patientCaseUHID+"';"
         cur10.execute(queryStr)
         #print(queryStr)
         cols10 = list(map(lambda x: x[0], cur10.description))
@@ -276,7 +278,7 @@ def prepare_data(patientCaseUHID,caseType,conditionCase,folderName):
         dates_detail['actual_DOB'] = dates_detail.apply(lambda x: actual_birthdate(x['dateofbirth'], x['add_seconds']), axis=1)
         dates_detail['actual_DOA'] = dates_detail.apply(lambda x: actual_birthdate(x['dateofadmission'], x['add_seconds_admission']), axis=1)
         dd = dates_detail[['actual_DOB','uhid','dischargeddate','actual_DOA','gender','birthweight','birthlength','birthheadcircumference','inout_patient_status'
-        ,'gestationweekbylmp','gestationdaysbylmp','baby_type','central_temp','apgar_onemin',
+        ,'gestation','gestationweekbylmp','gestationdaysbylmp','baby_type','central_temp','apgar_onemin',
         'apgar_fivemin','apgar_tenmin','motherage','conception_type','mode_of_delivery','steroidname',
         'numberofdose','dischargestatus','birthlength','birthheadcircumference','inout_patient_status'
         ,'gestationweekbylmp','gestationdaysbylmp','baby_type','central_temp','apgar_onemin',
@@ -654,6 +656,10 @@ def prepare_data(patientCaseUHID,caseType,conditionCase,folderName):
         qw['totalparenteralvolume'].fillna(method='ffill')
         qw['total_intake'].fillna(method='ffill')
         qw['tpn-tfl'].fillna(method='ffill')
+        if caseType == "Death":
+            qw['dischargestatus'] = 1
+        elif  caseType == "Discharge":
+            qw['dischargestatus'] = 0     
         if not os.path.exists(filePath):
             os.makedirs(filePath)   
         qw.to_csv(fileName)
