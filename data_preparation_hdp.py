@@ -185,6 +185,20 @@ def conception(x):
         return 1
     else:
         return 0
+    
+def mod(x):
+    print(x);
+    if 'LSCS' in x:
+        return 1
+    else:
+        return 0
+    
+def steroid(x):
+    print(x);
+    if 'beta' in x:
+        return 1
+    else:
+        return 0
 
 def baby_type(x):
     if x == 'Twins' or x == 'Triplets':
@@ -612,6 +626,14 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
 
         print('Total number of columns in final hour_series added ='+str(len(final.columns))+'in test_cont added ='+str(len(test_cont.columns)))             
         qw = pd.merge(final,test_cont, on=['uhid','cont_time'],how='left')
+        qw['gender'] = qw['gender'].apply(gender)
+        qw['inout_patient_status'] = qw['inout_patient_status'].apply(in_out)
+        qw['baby_type'] = qw['baby_type'].apply(baby_type)
+        qw['conception_type'] = qw['conception_type'].apply(conception)
+        qw['mode_of_delivery'] = qw['mode_of_delivery'].apply(mod)
+        qw['steroidname'] = qw['steroidname'].apply(steroid)
+
+
         # Next is data fill step
         print ('data preparation forward filling started')    
         qw['pulserate'].fillna(method='ffill',limit=5)
@@ -650,7 +672,7 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
             os.makedirs(filePath)
         print('Total number of columns in final qw  ='+str(len(qw.columns)))             
         qw.to_csv(fileName)
-        return fileName, qw
+        return 
     except Exception as e:
         print('Exception in data preparation', e)
         PrintException()
