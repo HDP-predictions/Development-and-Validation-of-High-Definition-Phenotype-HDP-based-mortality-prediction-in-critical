@@ -16,7 +16,7 @@ def PrintException():
     line = linecache.getline(filename, lineno, f.f_globals)
     print('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj))
     return True
-"""
+
 try:
     con = psycopg2.connect (user = 'postgres',
                     password = 'postgres',
@@ -25,8 +25,7 @@ try:
                     database = 'inicudb')
     preparedData = pd.DataFrame()
     conditionCase = "(dischargestatus = 'Discharge')"
-    data = [["RSHI.0000020326","Discharge"],["RSHI.0000023451", "Death"],["RSHI.0000013288","Discharge"],["RNEH.0000012581","Death"],
-                            ["RSHI.0000023452","Discharge"],["RSHI.0000015691","Death"],["RSHI.0000012985","Discharge"]]
+    data = [["RJUB.12475","Discharge"]]
     patientCaseUHIDSet = pd.DataFrame(data,columns=['uhid','typeOfCase'])
     #fileName = prepare_data(patientCaseUHID,typeOfCase,"(dischargestatus = 'Discharge')",folderName)
     for row in patientCaseUHIDSet.itertuples():
@@ -52,6 +51,7 @@ except Exception as e:
 #visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
 """
 #Check how many death cases, as per length of data in death cases build equal number of discharge cases 
+"""
 folderName = ""
 typeOfCase = ""
 deathCase = 1
@@ -62,7 +62,10 @@ con = psycopg2.connect (user = 'postgres',
                 port = '5433',
                 host = 'localhost',                
                 database = 'inicudb')
-balanceDS = balanceDataset(con)
+#generate new set of death and discharge cases
+#balanceDS = balanceDataset(con)
+#we can also load previously generated set whose data preparation is already done for faster execution
+balanceDS = pd.read_csv('death_discharge_set.csv')
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
@@ -90,10 +93,10 @@ for row in balanceDS.itertuples():
         #fileName,uhidDataSet = prepare_data(con,patientCaseUHID,typeOfCase,conditionCase,folderName)
         # uncomment below in case csv data is already generated and now lstm needs to be executed
         fileName,uhidDataSet = read_prepare_data(con,patientCaseUHID,typeOfCase,conditionCase,folderName)
-        print('UHID',patientCaseUHID,'data preperation done total number of colums built=',len(uhidDataSet))
         visualFlag = visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
         print('UHID',patientCaseUHID,'data visualization done')
         preparedData = pd.concat([preparedData,uhidDataSet], axis=0, ignore_index=True)
+        print('UHID',patientCaseUHID,'data preperation done total number of rows added =',len(uhidDataSet), 'number of columns in new frame='+str(len(uhidDataSet.columns)),'number of columns in total frame='+str(len(preparedData.columns)))        
         #preparedData = preparedData.append(uhidDataSet)
         print('preparedData length=',len(preparedData),'  added uhid minutes=',len(uhidDataSet))
     except Exception as e:
@@ -119,5 +122,7 @@ inter = ['dischargestatus', 'mean_bp',
        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
        'urine', 'urine_per_hour', 'uhid']
 cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
-preparedData.to_csv('lstm_analysis.csv')
+preparedData = pd.read_csv('lstm_analysis.csv')
+print('Total number of columns in new frame='+str(len(preparedData.columns)))
+#preparedData.to_csv('lstm_analysis.csv')
 predictLSTM(preparedData, fixed, cont, inter)

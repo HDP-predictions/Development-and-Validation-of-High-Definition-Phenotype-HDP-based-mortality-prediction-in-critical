@@ -286,16 +286,14 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         ,'gestationweekbylmp','gestationdaysbylmp','baby_type','central_temp','apgar_onemin',
         'apgar_fivemin','apgar_tenmin','motherage','conception_type','mode_of_delivery','steroidname',
         'numberofdose']]
-
         dd.dropna(subset=['dischargeddate'],inplace=True)
         dd['los'] = dates_detail['dischargeddate'] - dates_detail['actual_DOA']
-
         dd['day_1'] = dd['los'].apply(day)
-
         dd = dd[dd['day_1']>=0]
-
         dd.sort_values(by = ['actual_DOA'],inplace=True)
         dd.drop_duplicates(subset=['uhid'],keep='first',inplace=True)
+        print('Total number of columns in  data prepare 1='+str(len(dd.columns)))
+        #Repeat data and add hour series column representing minute wise data
         dt = pd.DataFrame()
         for i in dd.uhid.unique():
             x = dd[dd['uhid']==i]
@@ -316,6 +314,7 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
             dt = dt.append(x,ignore_index=True)
 
         dt.drop_duplicates(subset=['uhid','hour_series'],inplace=True)
+        print('Total number of columns in  data prepare hour_series added 2='+str(len(dt.columns)))
 
 
 
@@ -323,27 +322,18 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         cur1.execute("select distinct(b.uhid),l.conception_type, b.gender, b.dateofadmission, b.dischargestatus,b.birthweight,b.weight_galevel,b.weight_centile,b.birthlength,b.birthheadcircumference, b.inout_patient_status, b.gestationweekbylmp, b.gestationdaysbylmp,round( CAST((b.gestationweekbylmp + b.gestationdaysbylmp/7::float) as numeric),2) as Gestation,b.dischargeddate, b.admissionweight, b.baby_type,b.baby_number, b.branchname ,DATE_PART('day',b.dischargeddate - b.dateofadmission) as LOS,c.apgar_onemin, c.apgar_fivemin,c.apgar_tenmin, c.resuscitation,d.isantenatalsteroidgiven, d.mode_of_delivery,z.motherage,e.jaundicestatus as JAUNDICE,  f.eventstatus as SEPSIS,f.progressnotes, g.eventstatus as RDS, g.progressnotes,y.eventstatus as ASPHYXIA,y.progressnotes from "+schemaName+".baby_detail as b left join "+schemaName+".birth_to_nicu as c on b.uhid = c.uhid and b.episodeid = c.episodeid left join "+schemaName+".parent_detail as z on b.uhid = z.uhid and b.episodeid = z.episodeid left join "+schemaName+".antenatal_history_detail as d on b.uhid = d.uhid and b.episodeid = d.episodeid left join "+schemaName+".sa_jaundice AS e ON b.uhid = e.uhid and e.jaundicestatus = 'Yes' and e.phototherapyvalue='Start' left join "+schemaName+".sa_infection_sepsis AS f ON b.uhid = f.uhid and f.eventstatus = 'yes' and f.episode_number = 1 left join "+schemaName+".sa_cns_asphyxia AS y ON b.uhid = y.uhid and y.eventstatus = 'yes' and y.episode_number = 1 left join "+schemaName+".antenatal_history_detail as l on b.uhid=l.uhid left join "+schemaName+".sa_resp_rds AS g ON b.uhid = g.uhid and g.eventstatus = 'Yes' and g.episode_number = 1 and g.uhid IN (select distinct(h.uhid) from "+schemaName+".respsupport AS h where h.eventname='Respiratory Distress' and (h.rs_vent_type ='Mechanical Ventilation' OR h.rs_vent_type ='HFO') UNION select distinct(i.uhid) from "+schemaName+".sa_resp_rds AS i where i.sufactantname is not null) and b.uhid = '"+patientCaseUHID+ "' order by b.dateofadmission")
         cols1 = list(map(lambda x: x[0], cur1.description))
         ds = pd.DataFrame(cur1.fetchall(),columns=cols1)
-
         data = ds.copy()
-
         ids = dt.uhid.unique()
-
         data.drop_duplicates('uhid',keep='first',inplace=True)
-
         df = pd.DataFrame(columns=data.columns)
-
         for i in ids:
             x = data[data['uhid']==i]
             df = df.append(x,ignore_index=True)
-
         pd.set_option('display.max_columns',100)
-
         ds = pd.DataFrame()
-
         ds = dt.copy()
         uhid = ds.uhid.unique()
         dt = pd.DataFrame()
-
         for i in uhid:
             x = dd[dd['uhid']==i]
             time_s = []
@@ -366,6 +356,8 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         dt['hour'] = dt['hour_series'].apply(split_hour)
         dt['day'] = dt['hour_series'].apply(split_date_1)
         print ('data preparation intake output started')    
+
+        print('Total number of columns in  data prepare hour_series added 3='+str(len(dt.columns)))        
         #Intake Output
         cur9= con.cursor()
         cur9.execute("SELECT t1.uhid,t1.abdomen_girth,t1.urine,t1.stool,t1.stool_passed, t1.entry_timestamp FROM "+schemaName+".nursing_intake_output AS t1 where t1.uhid = '"+patientCaseUHID+"'")
@@ -385,6 +377,9 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         output_d.sort_values(by=['uhid','entry_timestamp'],inplace=True)
         test = output_d.drop_duplicates(subset=['uhid','hour'],keep='last')
         dh = pd.merge(dt,test,on=['uhid','hour'],how='left')
+
+        print('Total number of columns in  data prepare hour_series added 4='+str(len(dh.columns)))        
+
         dh.sort_values('hour_series')
         dg = pd.DataFrame()
 
@@ -409,39 +404,31 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
                     print(j,'Exception is',e)
                     continue
             dg = dg.append(x,ignore_index=True)  
-
         dg = dg.sort_values('hour_series')
-
         data = dg.copy()
-
         data['series'] = data.hour_series
-
         dg = data.copy()
-
         dg['urine'] = dg['urine'].apply(to_float)
         dg['urine'] = dg['urine'].apply(urine_check)
         dg['urine_per_hour'] = dg['urine']/((dg['time_divide'])/(3600))
+        print('Total number of columns in  data prepare hour_series added 5='+str(len(dg.columns)))        
         dt = dg.sort_values(by = ['uhid','hour_series'])
         ds = pd.DataFrame()
-
         for i in dt.uhid.unique():
             x = dt[dt['uhid']==i]
             x['urine_per_hour'].fillna(method='bfill',inplace=True)
             ds = ds.append(x,ignore_index=True)
-
         #Blood Gas
         cur1 = con.cursor()
         cur1.execute("SELECT uhid,creationtime,modificationtime,ph,entrydate FROM "+schemaName+".nursing_bloodgas where uhid ='"+ patientCaseUHID+"'")
         cols1 = list(map(lambda x: x[0],cur1.description))
         ph = pd.DataFrame(cur1.fetchall(),columns=cols1)
-
         ph['new_ph'] = ph.ph.apply(ph_func)
         ph.dropna(subset=['new_ph'],inplace=True)
         ph_df = pd.DataFrame()
         for i in ph.uhid.unique():
             x = ph[ph['uhid']==i]
             ph_df = ph_df.append(x,ignore_index=True)
-
         if len(ph_df.columns)>0:
             ph_df['hour'] = ph_df.entrydate.apply(split_hour)
             ph_df.drop_duplicates(subset=['uhid','hour'],keep='last',inplace=True)
@@ -450,7 +437,6 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
             print(x)
             ph_df_1 = pd.DataFrame(columns=ph.columns)
             ph_df_1 = ph_df_1.append(x,ignore_index=True)
-
         ds['uhid'] = ds['uhid'].astype(str)
 
         if len(ph_df.columns)>0:
@@ -459,6 +445,8 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         else:
             ss = pd.merge(ds,ph_df_1,on=['uhid'],how='left')
             ss = ss.drop_duplicates(subset=['uhid','hour_series'],keep='first')
+
+        print('Total number of columns in  data prepare hour_series added 6='+str(len(ss.columns)))        
 
         #Vitals
         print ('data preparation vitals - continuous data started')    
@@ -480,6 +468,8 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
 
         s1['temp'] = s1.apply(lambda x: temp_a(x['centraltemp'], x['skintemp']), axis=1)
 
+        print('Total number of columns in  data prepare skin temperature added 7='+str(len(s1.columns)))        
+
         #Anthropometry
         cur2 = con.cursor()
         cur2.execute("SELECT t1.uhid,t1.visitdate,t1.visittime,t1.currentdateweight, t1.currentdateheight  FROM "+schemaName+".baby_visit AS t1 where t1.uhid = '"+patientCaseUHID+"'")
@@ -487,16 +477,13 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         bv = pd.DataFrame(cur2.fetchall(),columns=cols2)
 
         bv.sort_values('visitdate',inplace=True)
-
         bv['hour'] = bv.apply(lambda x: stamp_1(x['visitdate'], x['visittime']), axis=1)
-
         bv['day'] = bv['visitdate'].apply(to_str)
-
         bv.drop_duplicates(subset=['uhid','visitdate'],keep='last',inplace=True)
-
         s1['day'] = s1['hour_series'].apply(split_date_1)
-
         s2 = pd.merge(s1,bv,on = ['uhid','day'], how='left')
+
+        print('Total number of columns in  data prepare Anthropometry added 7='+str(len(s2.columns)))        
 
         #Medications
         cur7= con.cursor()
@@ -514,30 +501,32 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
 
         s3['day'] = s3['hour_series'].apply(split_date_1)
 
+        print('Total number of columns in  data prepare Medications added 7='+str(len(s3.columns)))        
+
         #Nutrition
         cur8= con.cursor()
         cur8.execute("SELECT t1.uhid,t1.entrydatetime,t1.totalparenteralvolume,t1.total_intake FROM "+schemaName+".babyfeed_detail AS t1 where t1.uhid = '"+patientCaseUHID+"'")
         cols8 = list(map(lambda x: x[0], cur8.description))
         pn = pd.DataFrame(cur8.fetchall(),columns=cols8)
-
         pn['hour'] = pn.entrydatetime.apply(split_hour)
         pn['total_intake'] = pn['total_intake'].astype(float)
         pn['tpn-tfl'] = pn['totalparenteralvolume']/pn['total_intake']
-
         s4 = pd.merge(s3,pn,on = ['uhid','hour'], how='left')
-
         s4.drop_duplicates(subset=['uhid','hour_series'],inplace=True)
+
+        print('Total number of columns in  data prepare nutrition added 8='+str(len(s4.columns)))        
+       
         q = pd.DataFrame()
         for i in s4.uhid.unique():
             x = s4[s4['uhid']==i]
             x['currentdateheight'].fillna(method='ffill',inplace=True)
             x['currentdateweight'].fillna(method='ffill',inplace=True)
             q = q.append(x,ignore_index=True)
-
         q['abdomen_girth'] = pd.to_numeric(q['abdomen_girth'], errors='coerce')
         q['abdomen_girth'] = q['abdomen_girth'].apply(abd)
-
         dt = pd.DataFrame()
+        print('Total number of columns in  data prepare q added 9='+str(len(s4.columns)))        
+       
         for i in q.uhid.unique():
             x = q[q['uhid']==i]
             #for j in y['day'].unique():
@@ -549,9 +538,7 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
             x['total_intake'].fillna(method='ffill',inplace=True)
             x['tpn-tfl'].fillna(method='ffill',inplace=True)
             dt = dt.append(x,ignore_index=True)
-
         a = dt.replace([np.inf, -np.inf], np.nan)
-
         a['abdomen_girth'] = a['abdomen_girth'].apply(abd_2)
         a['abdomen_girth'] = a['abdomen_girth'].apply(abd_3)
         a['urine_per_hour'] = a['urine_per_hour'].apply(upm)
@@ -560,11 +547,12 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         a.currentdate = a.currentdateweight.apply(weight_correct_2)
         a['currentdateheight'] = a['currentdateheight'].apply(height_correct)
         a['rbs'] = a['rbs'].apply(rbs_correct)
-
         data = a.copy()
         data['day'] = data['hour_series'].apply(split_date_1)
-
         data['hour_series'] = data['hour_series'].apply(to_date)
+
+        print('Total number of columns in  data prepare rbs added 10='+str(len(data.columns)))        
+       
         df = pd.DataFrame()
         for i in data.uhid.unique():
             x = data[data['uhid']==i]
@@ -573,9 +561,7 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
             x.currentdateheight.fillna(method='ffill',inplace=True)
             n = math.ceil(len(x)/24)+1
             start_date = pd.to_datetime(x['day'].iloc[0]+" " + "08:00:00") - timedelta(hours=24)
-            for i in range(int(n)):
-                
-                
+            for i in range(int(n)):          
                 y = x[(x['hour_series']>=start_date + timedelta(hours=24*i)) & (x['hour_series']<=start_date + timedelta(hours=24*(i+1)))]
                 y['stool_day_total'] = (y['stool_passed'].sum())/60
                 df =df.append(y,ignore_index=True)
@@ -601,32 +587,30 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         cols1 = list(map(lambda x: x[0], cur1.description))
         ds = pd.DataFrame(cur1.fetchall(),columns=cols1)
         ds.sort_values('starttime',inplace=True)
-
         test = ds.drop_duplicates(subset=['uhid','starttime'],keep='first')
+        print('Total number of columns in test ='+str(len(test.columns)))             
 
         #Ventilator Parameters
         cur_vent = con.cursor()
         cur_vent.execute("SELECT t1.uhid,t1.start_time,t1.creationtime,t1.peep, t1.pip,t1.map ,t1.tidalvol, t1.minvol,t1.ti,t1.fio2 FROM "+schemaName+".device_ventilator_detail_dump AS t1 LEFT JOIN "+schemaName+".baby_detail AS t2 ON t1.uhid=t2.uhid WHERE (t2.dischargestatus = '"+caseType+"' OR t2.dischargestatus = '"+caseType+"') and t2.uhid = '"+patientCaseUHID+"';")
         cols_vent = list(map(lambda x: x[0], cur_vent.description))
         ventilator_cont = pd.DataFrame(cur_vent.fetchall(),columns=cols_vent)
-
         test_vent = ventilator_cont.drop_duplicates(subset=['uhid','start_time'],keep='first')
-
         test['date'] = test.starttime.apply(split_date)
         test_vent['date'] = test_vent.start_time.apply(split_date)
-
         cont_data = pd.merge(test,test_vent,on=['uhid','date'],how='left',copy=False)
+
+        print('Total number of columns in cont_data ='+str(len(cont_data.columns)))             
+       
         test_cont = cont_data.drop_duplicates(subset=['uhid','starttime','heartrate'],keep='first')
-
         test_cont['hour_series'] = test_cont['date'].apply(split_hour)
-
-
         test_cont['ref_hour'] = test_cont['hour_series'].apply(to_str)
         final['ref_hour'] = final['hour_series'].apply(to_str)
-
         test_cont['cont_time'] = test_cont.starttime.apply(con_time)
-
         final['cont_time'] = final.ref_hour.apply(con_time_2)
+
+
+        print('Total number of columns in final hour_series added ='+str(len(final.columns))+'in test_cont added ='+str(len(test_cont.columns)))             
         qw = pd.merge(final,test_cont, on=['uhid','cont_time'],how='left')
         # Next is data fill step
         print ('data preparation forward filling started')    
@@ -663,7 +647,8 @@ def prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName):
         elif  caseType == "Discharge":
             qw['dischargestatus'] = 0     
         if not os.path.exists(filePath):
-            os.makedirs(filePath)   
+            os.makedirs(filePath)
+        print('Total number of columns in final qw  ='+str(len(qw.columns)))             
         qw.to_csv(fileName)
         return fileName, qw
     except Exception as e:
