@@ -16,7 +16,7 @@ def PrintException():
     line = linecache.getline(filename, lineno, f.f_globals)
     print('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj))
     return True
-
+"""
 try:
     con = psycopg2.connect (user = 'postgres',
                     password = 'postgres',
@@ -63,9 +63,11 @@ con = psycopg2.connect (user = 'postgres',
                 host = 'localhost',                
                 database = 'inicudb')
 #generate new set of death and discharge cases
-balanceDS = balanceDataset(con)
+#balanceDS = balanceDataset(con)
 #we can also load previously generated set whose data preparation is already done for faster execution
-#balanceDS = pd.read_csv('death_discharge_set.csv')
+"""
+"""
+balanceDS = pd.read_csv('death_discharge_set.csv')
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
@@ -105,6 +107,7 @@ for row in balanceDS.itertuples():
         continue    
 print("---------Data Visualization Done----------")
 print('Visualization Result=',visualFlag)
+"""
 print("---------LSTM Analysis Start----------")
 fixed = ['dischargestatus',  'gender', 'birthweight',
        'birthlength', 'birthheadcircumference', 'inout_patient_status',
@@ -122,7 +125,7 @@ inter = ['dischargestatus', 'mean_bp',
        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
        'urine', 'urine_per_hour', 'uhid']
 cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
-#preparedData = pd.read_csv('lstm_analysis.csv')
+preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
-preparedData.to_csv('lstm_analysis.csv')
+#preparedData.to_csv('lstm_analysis.csv')
 predictLSTM(preparedData, fixed, cont, inter)

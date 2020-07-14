@@ -192,71 +192,68 @@ def range_finder(x):
     fractional = (x/15.0) - math.floor(x/15.0)
     return int(round(fractional*15))
 
-def make_lstm(gs):
-    final_df = pd.DataFrame(columns=gs.columns)
-    ids = gs.uhid.unique()
-    print('------inside make lstm---unique uhid count =',len(ids))
-    shuffle(ids)
-    for i in ids:
-        x = gd[gd['uhid']==i]
-        x = x[range_finder(len(x)):len(x)]
-        final_df = final_df.append(x,ignore_index=True)
-    final_df.fillna(-999,inplace=True)
-    train = final_df[:split_70(len(final_df))]
-    test = final_df[split_70(len(final_df)):]
-    y_train = train['dischargestatus']
-    X_train = train.drop('dischargestatus',axis=1)
-    X_train = X_train.drop('uhid',axis=1)
-    #X_train = X_train.drop('visittime',axis=1)
+def make_lstm(gd):
+    try:
+        final_df = pd.DataFrame(columns=gd.columns)
+        ids = gd.uhid.unique()
+        #print('------inside make lstm---unique uhid count =',len(ids))
+        shuffle(ids)
+        for i in ids:
+            x = gd[gd['uhid']==i]
+            x = x[range_finder(len(x)):len(x)]
+            final_df = final_df.append(x,ignore_index=True)
+        final_df.fillna(-999,inplace=True)
+        train = final_df[:split_70(len(final_df))]
+        test = final_df[split_70(len(final_df)):]
+        y_train = train['dischargestatus']
+        X_train = train.drop('dischargestatus',axis=1)
+        X_train = X_train.drop('uhid',axis=1)
+        #X_train = X_train.drop('visittime',axis=1)
 
-    y_test = test['dischargestatus']
-    X_test = test.drop('dischargestatus',axis=1)
-    X_test = X_test.drop('uhid',axis=1)
-    #X_test = X_test.drop('startdate',axis=1)
+        y_test = test['dischargestatus']
+        X_test = test.drop('dischargestatus',axis=1)
+        X_test = X_test.drop('uhid',axis=1)
+        auc_roc_inter = []
+        val_a = []
+        train_a = []
+        #converting the data into a numpy array
+        X_train = np.array(X_train)
+        y_train = np.array(y_train)
+        X_test = np.array(X_test)
+        y_test = np.array(y_test)
+        ytrain1 = []
+        for i in range(0,len(y_train),15):
+            #print(i)
+            y1 = y_train[i:i+15]
+            ytrain1.append(y1[-1])
 
+        ytest1 = []
+        for i in range(0,len(y_test),15):
+            #print(i)
+            y1 = y_test[i:i+15]
+            ytest1.append(y1[-1])
+        ytrain1 = np.array(ytrain1)
+        ytest1 = np.array(ytest1)
+        Xtrain = np.reshape(X_train, (-1, 15, X_train.shape[1]))
+        Xtest = np.reshape(X_test, (-1, 15, X_test.shape[1]))
+        return Xtrain,Xtest,ytrain1,ytest1
+    except Exception as e:
+            print('Error in make_lstm method',e)
+            PrintException()
+            return None
 
-    # In[ ]:
-
-    auc_roc_inter = []
-    val_a = []
-    train_a = []
-
-
-    #converting the data into a numpy array
-    X_train = np.array(X_train)
-    y_train = np.array(y_train)
-    X_test = np.array(X_test)
-    y_test = np.array(y_test)
-    ytrain1 = []
-    for i in range(0,len(y_train),15):
-        #print(i)
-        y1 = y_train[i:i+15]
-        ytrain1.append(y1[-1])
-
-    ytest1 = []
-    for i in range(0,len(y_test),15):
-        #print(i)
-        y1 = y_test[i:i+15]
-        ytest1.append(y1[-1])
-
-    ytrain1 = np.array(ytrain1)
-    ytest1 = np.array(ytest1)
-
-    Xtrain = np.reshape(X_train, (-1, 15, X_train.shape[1]))
-    Xtest = np.reshape(X_test, (-1, 15, X_test.shape[1]))
-
-    return Xtrain,Xtest,ytrain1,ytest1
 
 
 #LSTM model
 def lstm_model(n,gd):
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weights=True,patience=3)
     auc_roc_inter = []
     val_a = []
     train_a = []
     print('-----------Inside lstm model-------------',n,len(gd))
     for i in range(25):
         try:
-            print('-----------Iteration No-------------=',i)
+            #print('-----------Iteration No-------------=',i)
             Xtrain,Xtest,ytrain1,ytest1 = make_lstm(gd)
             #Building the LSTM model
             X = Input(shape=(None, n), name='X')
@@ -304,9 +301,14 @@ def lstm_model(n,gd):
 
             val_a.append(v_a)
             train_a.append(t_a)
+            print(t_a)
+            print('--------between t_a & train_a -------------')
+            print(train_a)
             auc_roc_inter.append(roc_auc_score(y_answer,y_pred))
             continue
-        except:
+        except Exception as e:
+            print('Exception inside lstm_model',i,e)
+            PrintException()
             continue
     return auc_roc_inter,list(itertools.chain(*val_a)),list(itertools.chain(*train_a))
 
@@ -319,7 +321,6 @@ def predictLSTM(gw, fixed, cont, inter):
     try:
         print('columns in input to LSTM dataframe',gw.columns)
         #defining the early stopping criteria
-        es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weights=True,patience=3)
         f_a = []
         i_a = []
         c_a = []
@@ -329,9 +330,10 @@ def predictLSTM(gw, fixed, cont, inter):
         a = []
 
         gd = gw[fixed]
-        print('total length of gd=',len(gd))
+        print('total length of gd=',len(gd),'gd count',gd.count())
         an = lstm_model(18,gd)
         f_a.append(an[0])
+        print('-----AN-------',an)
         print('fixed',f_a)
         print(mean_confidence_interval(an[0]))
 
