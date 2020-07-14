@@ -208,7 +208,7 @@ def in_out(x):
         return 1
     else:
         return 0
-def read_prepare_data(patientCaseUHID,caseType,conditionCase,folderName):
+def read_prepare_data(con, patientCaseUHID,caseType,conditionCase,folderName):
     try:    
         path = os.getcwd()
         seperator = '_'
@@ -216,6 +216,13 @@ def read_prepare_data(patientCaseUHID,caseType,conditionCase,folderName):
         fileName = filePath+caseType+seperator+patientCaseUHID+seperator+'intermediate_checkpoint_new_5.csv'
         preparedData = pd.read_csv(fileName)
         return fileName, preparedData
+    except IOError as e:
+        print('No data for this uhid in data preparation', e)    
+        #this uhid does not exist
+        fileName,pwData = prepare_data(con,patientCaseUHID,caseType,conditionCase,folderName)
+        preparedData = pd.read_csv(fileName)
+        print('Data prepared now for uhid=', patientCaseUHID)    
+        return fileName, preparedData    
     except Exception as e:
         print('Exception in data preparation', e)
         PrintException()

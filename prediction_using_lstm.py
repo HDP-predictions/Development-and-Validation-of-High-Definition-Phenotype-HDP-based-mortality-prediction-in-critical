@@ -193,51 +193,17 @@ def range_finder(x):
     return int(round(fractional*15))
 
 def make_lstm(gs):
-    #gs1 = gs[gs['birthweight']<=1500]
-    #gs2 = gs[(gs['birthweight']>2500)&(gs['birthweight']<3000)]
-
-    #balancing the dataset
-    #death1 = gs1[gs1['dischargestatus']==1]
-    #death_l1 = death1.uhid.unique()
-    #death2 = gs2[gs2['dischargestatus']==1]
-    #death_l2 = death2.uhid.unique()
-    #dis1 = gs1[gs1['dischargestatus']==0]
-    #dis_l1 = dis1.uhid.unique()
-    #dis2 = gs2[gs2['dischargestatus']==0]
-    #dis_l2 = dis2.uhid.unique()
-    #print(len(dis1))
-    #final = pd.DataFrame()
     final_df = pd.DataFrame(columns=gs.columns)
-    #d1 = randomize(dis1,death1)
-    #d2 = randomize(dis2,death2)
-    #print(len(d1))
-    #d1 = d1[:len(death1)]
-    #d2 = d2[:len(death2)]
-    #gd = pd.concat([d1,d2])
     ids = gs.uhid.unique()
-    print(len(ids))
+    print('------inside make lstm---unique uhid count =',len(ids))
     shuffle(ids)
     for i in ids:
         x = gd[gd['uhid']==i]
         x = x[range_finder(len(x)):len(x)]
-
         final_df = final_df.append(x,ignore_index=True)
-
-
-
     final_df.fillna(-999,inplace=True)
-
-
-    # In[ ]:
-
-
     train = final_df[:split_70(len(final_df))]
     test = final_df[split_70(len(final_df)):]
-
-
-    # In[ ]:
-
-
     y_train = train['dischargestatus']
     X_train = train.drop('dischargestatus',axis=1)
     X_train = X_train.drop('uhid',axis=1)
@@ -287,10 +253,10 @@ def lstm_model(n,gd):
     auc_roc_inter = []
     val_a = []
     train_a = []
-
-
+    print('-----------Inside lstm model-------------',n,len(gd))
     for i in range(25):
         try:
+            print('-----------Iteration No-------------=',i)
             Xtrain,Xtest,ytrain1,ytest1 = make_lstm(gd)
             #Building the LSTM model
             X = Input(shape=(None, n), name='X')
@@ -363,49 +329,50 @@ def predictLSTM(gw, fixed, cont, inter):
         a = []
 
         gd = gw[fixed]
+        print('total length of gd=',len(gd))
         an = lstm_model(18,gd)
         f_a.append(an[0])
-        print("fixed")
+        print('fixed',f_a)
         print(mean_confidence_interval(an[0]))
 
         gd = gw[inter]
         an = lstm_model(26,gd)
         i_a.append(an[0])
-        print("inter")
+        print('inter',i_a)
         print(mean_confidence_interval(an[0]))
 
         gd = gw[cont]
         an = lstm_model(4,gd)
         c_a.append(an[0])
-        print("cont")
+        print('c_a',c_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+INTER------------------
         cont_inter = list(set(cont+inter))
         gd = gw[cont_inter]
         an = lstm_model(30,gd)
         ci_a.append(an[0])
-        print("cont_inter")
+        print('cont_inter',ci_a)
         print(mean_confidence_interval(an[0]))
         #---------------FIXED+INTER------------------
         fixed_inter = list(set(fixed+inter))
         gd = gw[fixed_inter]
         an = lstm_model(44,gd)
         fi_a.append(an[0])
-        print("fixed_inter")
+        print('fixed_inter',fi_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED------------------
         cont_fixed = list(set(cont+fixed))
         gd = gw[cont_fixed]
         an = lstm_model(22,gd)
         cf_a.append(an[0])
-        print("cont_fixed")
+        print('cont_fixed',cf_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED+INTER------------------
         all_cols = list(set(cont+inter+fixed))
         gd = gw[all_cols]
         an = lstm_model(48,gd)
         a.append(an[0])
-        print("all_cols")
+        print('all_cols',a)
         print(mean_confidence_interval(an[0]))
 
         print('Fixed')

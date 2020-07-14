@@ -17,11 +17,39 @@ def PrintException():
     print('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj))
     return True
 """
-folderName = "/Discharge_Cases/"
-patientCaseUHID = "RSHI.0000012314"
-typeOfCase = "Discharge"
-fileName = prepare_data(patientCaseUHID,typeOfCase,"(dischargestatus = 'Discharge')",folderName)
-visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
+try:
+    con = psycopg2.connect (user = 'postgres',
+                    password = 'postgres',
+                    port = '5433',
+                    host = 'localhost',                
+                    database = 'inicudb')
+    preparedData = pd.DataFrame()
+    conditionCase = "(dischargestatus = 'Discharge')"
+    data = [["RSHI.0000020326","Discharge"],["RSHI.0000023451", "Death"],["RSHI.0000013288","Discharge"],["RNEH.0000012581","Death"],
+                            ["RSHI.0000023452","Discharge"],["RSHI.0000015691","Death"],["RSHI.0000012985","Discharge"]]
+    patientCaseUHIDSet = pd.DataFrame(data,columns=['uhid','typeOfCase'])
+    #fileName = prepare_data(patientCaseUHID,typeOfCase,"(dischargestatus = 'Discharge')",folderName)
+    for row in patientCaseUHIDSet.itertuples():
+        patientCaseUHID = getattr(row, 'uhid')
+        typeOfCase = getattr(row, 'typeOfCase')
+        if typeOfCase == "Death":
+            folderName = "/Death_Cases/"
+            conditionCase = "(dischargestatus = 'Death' or dischargestatus = 'LAMA' )"
+            typeOfCase = "Death"
+        elif typeOfCase == "Discharge":
+            folderName = "/Discharge_Cases/"
+            conditionCase = "(dischargestatus = 'Discharge')"
+            typeOfCase = "Discharge"       
+        print('uhid',patientCaseUHID)
+        print('typeOfCase',typeOfCase)
+        fileName,uhidDataSet = read_prepare_data(con,patientCaseUHID,typeOfCase,conditionCase,folderName)
+        preparedData = pd.concat([preparedData,uhidDataSet], axis=0, ignore_index=True)
+        #preparedData = preparedData.append(uhidDataSet)
+        print('preparedData length=',len(preparedData))
+except Exception as e:
+    print(e)
+    PrintException()
+#visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
 """
 #Check how many death cases, as per length of data in death cases build equal number of discharge cases 
 folderName = ""
@@ -61,12 +89,13 @@ for row in balanceDS.itertuples():
         # uncomment below to generate data first time
         #fileName,uhidDataSet = prepare_data(con,patientCaseUHID,typeOfCase,conditionCase,folderName)
         # uncomment below in case csv data is already generated and now lstm needs to be executed
-        fileName,uhidDataSet = read_prepare_data(patientCaseUHID,typeOfCase,conditionCase,folderName)
+        fileName,uhidDataSet = read_prepare_data(con,patientCaseUHID,typeOfCase,conditionCase,folderName)
         print('UHID',patientCaseUHID,'data preperation done total number of colums built=',len(uhidDataSet))
         visualFlag = visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
         print('UHID',patientCaseUHID,'data visualization done')
-        preparedData = preparedData.append(uhidDataSet)
-        print('preparedData length=',len(preparedData))
+        preparedData = pd.concat([preparedData,uhidDataSet], axis=0, ignore_index=True)
+        #preparedData = preparedData.append(uhidDataSet)
+        print('preparedData length=',len(preparedData),'  added uhid minutes=',len(uhidDataSet))
     except Exception as e:
         print(e)
         PrintException()
@@ -90,5 +119,5 @@ inter = ['dischargestatus', 'mean_bp',
        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
        'urine', 'urine_per_hour', 'uhid']
 cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
-print('1columns=',preparedData.columns)
+preparedData.to_csv('lstm_analysis.csv')
 predictLSTM(preparedData, fixed, cont, inter)
