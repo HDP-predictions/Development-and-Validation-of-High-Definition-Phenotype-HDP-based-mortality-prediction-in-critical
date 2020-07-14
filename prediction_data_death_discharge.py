@@ -51,7 +51,6 @@ except Exception as e:
 #visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
 """
 #Check how many death cases, as per length of data in death cases build equal number of discharge cases 
-"""
 folderName = ""
 typeOfCase = ""
 deathCase = 1
@@ -63,11 +62,11 @@ con = psycopg2.connect (user = 'postgres',
                 host = 'localhost',                
                 database = 'inicudb')
 #generate new set of death and discharge cases
-#balanceDS = balanceDataset(con)
+balanceDS = balanceDataset(con)
 #we can also load previously generated set whose data preparation is already done for faster execution
 """
 """
-balanceDS = pd.read_csv('death_discharge_set.csv')
+#balanceDS = pd.read_csv('death_discharge_set.csv')
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
@@ -107,7 +106,6 @@ for row in balanceDS.itertuples():
         continue    
 print("---------Data Visualization Done----------")
 print('Visualization Result=',visualFlag)
-"""
 print("---------LSTM Analysis Start----------")
 fixed = ['dischargestatus',  'gender', 'birthweight',
        'birthlength', 'birthheadcircumference', 'inout_patient_status',
