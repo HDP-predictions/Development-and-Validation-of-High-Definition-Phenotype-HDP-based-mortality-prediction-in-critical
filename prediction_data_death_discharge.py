@@ -62,11 +62,11 @@ con = psycopg2.connect (user = 'postgres',
                 host = 'localhost',                
                 database = 'inicudb')
 #generate new set of death and discharge cases
-balanceDS = balanceDataset(con)
+#balanceDS = balanceDataset(con)
 #we can also load previously generated set whose data preparation is already done for faster execution
 """
 """
-#balanceDS = pd.read_csv('death_discharge_set.csv')
+balanceDS = pd.read_csv('death_discharge_set.csv')
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
@@ -101,7 +101,7 @@ for row in balanceDS.itertuples():
         #preparedData = preparedData.append(uhidDataSet)
         print('preparedData length=',len(preparedData),'  added uhid minutes=',len(uhidDataSet))
     except Exception as e:
-        print(e)
+        print('Exception in prediction_data_death_discharge', e)
         PrintException()
         continue    
 print("---------Data Visualization Done----------")
