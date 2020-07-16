@@ -62,11 +62,11 @@ con = psycopg2.connect (user = 'postgres',
                 host = 'localhost',                
                 database = 'inicudb')
 #generate new set of death and discharge cases
-balanceDS = balanceDataset(con)
+#balanceDS = balanceDataset(con)
 #we can also load previously generated set whose data preparation is already done for faster execution
 """
 """
-#balanceDS = pd.read_csv('death_discharge_set.csv')
+balanceDS = pd.read_csv('death_discharge_set.csv')
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
