@@ -123,7 +123,7 @@ inter = ['dischargestatus', 'mean_bp',
        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
        'urine', 'urine_per_hour', 'uhid']
 cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
-#preparedData = pd.read_csv('lstm_analysis.csv')
+preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
-preparedData.to_csv('lstm_analysis.csv')
+#preparedData.to_csv('lstm_analysis.csv')
 predictLSTM(preparedData, fixed, cont, inter)
