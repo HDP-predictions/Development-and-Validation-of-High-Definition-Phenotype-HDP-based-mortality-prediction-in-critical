@@ -8,6 +8,13 @@ import sys
 import linecache
 import pandas as pd
 import numpy as np
+import psycopg2
+import math
+import itertools
+import tensorflow as tf
+import scipy.stats
+import matplotlib.pyplot as plt
+import seaborn as sns
 from keras.layers import Activation, Dense, Dropout, SpatialDropout1D,Input,Masking,Bidirectional, TimeDistributed
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM,GRU
@@ -17,19 +24,11 @@ from sklearn.model_selection import train_test_split
 from keras.callbacks import EarlyStopping
 from random import seed
 from sklearn.metrics import roc_auc_score
-#seed(1)
-print("second")
-import tensorflow as tf
 from keras.layers import Input, Dense
 from keras.models import Model
-import scipy.stats
 from prettytable import PrettyTable
-import math
-import itertools
 from random import shuffle
-print("first")
-import psycopg2
-from random import shuffle
+from pylab import rcParams
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -192,6 +191,59 @@ def range_finder(x):
     fractional = (x/15.0) - math.floor(x/15.0)
     return int(round(fractional*15))
 
+def make_lstm_visualize(gd):
+    try:
+        print('--------inside make_lstm')
+        final_df = pd.DataFrame(columns=gd.columns)
+        ids = gd.uhid.unique()
+        #print('------inside make lstm---unique uhid count =',len(ids))
+        shuffle(ids)
+        for i in ids:
+            x = gd[gd['uhid']==i]
+            x = x[range_finder(len(x)):len(x)]
+            final_df = final_df.append(x,ignore_index=True)
+        final_df.fillna(-999,inplace=True)
+        train = final_df[:split_70(len(final_df))]
+        test = final_df[split_70(len(final_df)):]
+        print('train uhid=',train.uhid.unique())
+        y_train = train['dischargestatus']
+        X_train = train.drop('dischargestatus',axis=1)
+        X_train = X_train.drop('uhid',axis=1)
+        #X_train = X_train.drop('visittime',axis=1)
+
+        y_test = test['dischargestatus']
+        print('test uhid=',test.uhid.unique())
+        X_test = test.drop('dischargestatus',axis=1)
+        X_test = X_test.drop('uhid',axis=1)
+        auc_roc_inter = []
+        val_a = []
+        train_a = []
+        #converting the data into a numpy array
+        X_train = np.array(X_train)
+        y_train = np.array(y_train)
+        X_test = np.array(X_test)
+        y_test = np.array(y_test)
+        ytrain1 = []
+        for i in range(0,len(y_train),15):
+            #print(i)
+            y1 = y_train[i:i+15]
+            ytrain1.append(y1[-1])
+
+        ytest1 = []
+        for i in range(0,len(y_test),15):
+            #print(i)
+            y1 = y_test[i:i+15]
+            ytest1.append(y1[-1])
+        ytrain1 = np.array(ytrain1)
+        ytest1 = np.array(ytest1)
+        Xtrain = np.reshape(X_train, (-1, 15, X_train.shape[1]))
+        Xtest = np.reshape(X_test, (-1, 15, X_test.shape[1]))
+        return Xtrain,Xtest,ytrain1,ytest1,test
+    except Exception as e:
+            print('Error in make_lstm method',e)
+            PrintException()
+            return None
+
 def make_lstm(gd):
     try:
         print('--------inside make_lstm')
@@ -258,7 +310,7 @@ def lstm_model(n,gd):
         try:
             print('-----------Iteration No-------------=',i)
             print('-----------gd.uhid-------------=',gd.uhid.unique())
-            Xtrain,Xtest,ytrain1,ytest1 = make_lstm(gd)
+            Xtrain,Xtest,ytrain1,ytest1,xTestWithUHID = make_lstm_visualize(gd)
             #Building the LSTM model
             X = Input(shape=(None, n), name='X')
             mX = Masking()(X)
@@ -305,7 +357,25 @@ def lstm_model(n,gd):
             for j in y_test:
                 y_answer.append(acc(j))
             #print('y_model',y_model,'y_answer',y_answer)
+            print('------------visualization of output------------------')
+ 
+            #visualization
+            xTestWithUHID['y_pred'] = y_pred
 
+
+            #y_df = pd.DataFrame(y_pred)
+            rcParams['figure.figsize'] = 20, 5
+            axes = plt.gca()
+            print('------------visualization of output------------------')
+            sns.lineplot(y =  xTestWithUHID['y_pred'], x = np.arange(len(xTestWithUHID['uhid'])),linewidth=0,hue='uhid',data=xTestWithUHID)
+            plt.title('lstm_model_plot')
+            plt.xlabel('LOS in Minutes')
+            plt.ylabel('Probability')
+            axes.set_ylim([0,1])
+            plt.savefig('lstm_model.png',dpi = 300)
+
+
+            #append validation and training accuracy from each iteration
             val_a.append(v_a)
             train_a.append(t_a)
             #print(t_a)
@@ -354,7 +424,7 @@ def predictLSTM(gw, fixed, cont, inter):
         print('-----AN-------',an)
         print('---------fixed----------',f_a)
         print(mean_confidence_interval(an[0]))
-
+        """
         gd = gw[inter]
         an = lstm_model(lengthOfIntermittent,gd)
         i_a.append(an[0])
@@ -408,7 +478,8 @@ def predictLSTM(gw, fixed, cont, inter):
         print('Cont+Fixed')
         print(mean_confidence_interval(list(itertools.chain(*cf_a))))
         print('All')
-        print(mean_confidence_interval(list(itertools.chain(*a))))
+        print(mean_confidence_interval(list(itertools.chain(*a)))
+        """
         return True
     except Exception as e:
         print('Exception in Prediction', e)
