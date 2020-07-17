@@ -62,11 +62,11 @@ con = psycopg2.connect (user = 'postgres',
                 host = 'localhost',                
                 database = 'inicudb')
 #generate new set of death and discharge cases
-balanceDS = balanceDataset(con)
+#balanceDS = balanceDataset(con)
 #we can also load previously generated set whose data preparation is already done for faster execution
 """
 """
-#balanceDS = pd.read_csv('death_discharge_set.csv')
+balanceDS = pd.read_csv('death_discharge_set.csv')
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
@@ -123,7 +123,7 @@ inter = ['dischargestatus', 'mean_bp',
        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
        'urine', 'urine_per_hour', 'uhid']
 cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
-#preparedData = pd.read_csv('lstm_analysis.csv')
+preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
-preparedData.to_csv('lstm_analysis.csv')
+#preparedData.to_csv('lstm_analysis.csv')
 predictLSTM(preparedData, fixed, cont, inter)
