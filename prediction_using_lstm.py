@@ -209,12 +209,14 @@ def make_lstm_visualize(gd):
         y_train = train['dischargestatus']
         X_train = train.drop('dischargestatus',axis=1)
         X_train = X_train.drop('uhid',axis=1)
+        X_train = X_train.drop('hour_series_x',axis=1)
         #X_train = X_train.drop('visittime',axis=1)
 
         y_test = test['dischargestatus']
         print('test uhid=',test.uhid.unique())
         X_test = test.drop('dischargestatus',axis=1)
         X_test = X_test.drop('uhid',axis=1)
+        X_test = X_test.drop('hour_series_x',axis=1)        
         auc_roc_inter = []
         val_a = []
         train_a = []
@@ -330,7 +332,7 @@ def lstm_model(n,gd):
             #training accuracy
             t_a = []
             #fitting the model
-            model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
+            model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=1,callbacks=[es])
             #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
             for i in range(len(model.history.history['val_accuracy'])):
                 v_a.append(model.history.history['val_accuracy'][i])
@@ -358,22 +360,40 @@ def lstm_model(n,gd):
                 y_answer.append(acc(j))
             #print('y_model',y_model,'y_answer',y_answer)
             print('------------visualization of output------------------')
- 
+            print('------length of y_pred1-----',len(y_pred)) 
+            #y_pred = list(y_pred)*15
+            yNew = np.repeat(y_pred,15)
+            """
+            for i in y_pred:
+                flI = float(i)
+                print('------flI-----',flI)                 
+                yDummy = np.repeat(flI,15)
+                print('------yDummy-----',yDummy) 
+                yNew.append(yDummy)
+            """
+            print('------length of y_pred2-----',len(yNew)) 
+
+            print('------length of xTestWithUHID-----',len(xTestWithUHID)) 
             #visualization
-            xTestWithUHID['y_pred'] = y_pred
-
-
+            xTestWithUHID['y_pred'] = yNew
+            plt.figure()
             #y_df = pd.DataFrame(y_pred)
             rcParams['figure.figsize'] = 20, 5
             axes = plt.gca()
+            yData = np.array(xTestWithUHID['y_pred']).flatten()
+            print('------length of yData-----',len(yData)) 
+            print('------yData-----',yData)
+
+            print(xTestWithUHID.head())
+            xTestWithUHID.to_csv('lstm_model.csv')
             print('------------visualization of output------------------')
-            sns.lineplot(y =  xTestWithUHID['y_pred'], x = np.arange(len(xTestWithUHID['uhid'])),linewidth=0,hue='uhid',data=xTestWithUHID)
+            sns.lineplot(y = 'y_pred' , x = range(len(yNew)),linewidth=0,hue='uhid',data=xTestWithUHID)
             plt.title('lstm_model_plot')
             plt.xlabel('LOS in Minutes')
             plt.ylabel('Probability')
             axes.set_ylim([0,1])
             plt.savefig('lstm_model.png',dpi = 300)
-
+            print('------xTestWithUHID uhid-----',xTestWithUHID.uhid)
 
             #append validation and training accuracy from each iteration
             val_a.append(v_a)
@@ -411,8 +431,8 @@ def predictLSTM(gw, fixed, cont, inter):
         cf_a = []
         fi_a = []
         a = []
-        #reduced 2 for uhid and dischargestatus
-        lengthOfFixed = len(fixed) - 2
+        #reduced 2 for uhid and dischargestatus, 1 extra for hour_series - temporary testing
+        lengthOfFixed = len(fixed) - 3
         #reduced 2 for uhid and dischargestatus
         lengthOfIntermittent = len(inter) - 2
         #reduced 2 for uhid and dischargestatus
