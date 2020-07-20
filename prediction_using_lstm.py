@@ -299,7 +299,37 @@ def make_lstm(gd):
             PrintException()
             return None
 
-
+def visualizeLSTMOutput(xTestWithUHID):
+    try:
+        for i in xTestWithUHID.uhid.unique():
+            print('Inside visualizeLSTMOutput',i)
+            x = xTestWithUHID[xTestWithUHID['uhid']==i]
+            deathOrDischargeCase = 'Death'
+            print(x.columns)
+            #print('case is',x.dischargestatus.head(1))      
+            if (x.iloc[0].dischargestatus == 1):
+                deathOrDischargeCase = 'Death '
+            elif (x.iloc[0].dischargestatus == 0):
+                deathOrDischargeCase = 'Discharge '
+            print('case is',deathOrDischargeCase)
+            y_pred = np.array(x['y_pred']).flatten()
+            y_df = y_pred
+            rcParams['figure.figsize'] = 20, 6
+            axes = plt.gca()
+            sns.set(font_scale = 2)
+            #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
+            plt.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
+            plt.legend()
+            #plt.title(uhid)
+            plt.xlabel('LOS in Time Steps of 15 Minutes',fontsize=18)
+            plt.ylabel('Probability',fontsize=18)
+            axes.set_ylim([0,1])
+        plt.savefig(str(i) + ".png",dpi = 300)
+        return True
+    except Exception as e:
+        print ('Exception',e)
+        PrintException()
+        return None
 
 #LSTM model
 def lstm_model(n,gd):
@@ -359,42 +389,11 @@ def lstm_model(n,gd):
             for j in y_test:
                 y_answer.append(acc(j))
             #print('y_model',y_model,'y_answer',y_answer)
-            print('------------visualization of output------------------')
-            print('------length of y_pred1-----',len(y_pred)) 
-            #y_pred = list(y_pred)*15
-            yNew = np.repeat(y_pred,15)
-            """
-            for i in y_pred:
-                flI = float(i)
-                print('------flI-----',flI)                 
-                yDummy = np.repeat(flI,15)
-                print('------yDummy-----',yDummy) 
-                yNew.append(yDummy)
-            """
-            print('------length of y_pred2-----',len(yNew)) 
-
-            print('------length of xTestWithUHID-----',len(xTestWithUHID)) 
-            #visualization
+            print('------------visualization of output Started------------------')
+            yNew = np.repeat(y_pred, 15)
             xTestWithUHID['y_pred'] = yNew
-            plt.figure()
-            #y_df = pd.DataFrame(y_pred)
-            rcParams['figure.figsize'] = 20, 5
-            axes = plt.gca()
-            yData = np.array(xTestWithUHID['y_pred']).flatten()
-            print('------length of yData-----',len(yData)) 
-            print('------yData-----',yData)
-
-            print(xTestWithUHID.head())
-            xTestWithUHID.to_csv('lstm_model.csv')
-            print('------------visualization of output------------------')
-            sns.lineplot(y = 'y_pred' , x = range(len(yNew)),linewidth=0,hue='uhid',data=xTestWithUHID)
-            plt.title('lstm_model_plot')
-            plt.xlabel('LOS in Minutes')
-            plt.ylabel('Probability')
-            axes.set_ylim([0,1])
-            plt.savefig('lstm_model.png',dpi = 300)
-            print('------xTestWithUHID uhid-----',xTestWithUHID.uhid)
-
+            visualizeLSTMOutput(xTestWithUHID)
+            print('------------visualization of output Done------------------')
             #append validation and training accuracy from each iteration
             val_a.append(v_a)
             train_a.append(t_a)
