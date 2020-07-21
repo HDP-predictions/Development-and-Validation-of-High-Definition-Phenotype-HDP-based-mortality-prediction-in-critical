@@ -112,7 +112,7 @@ fixed = ['dischargestatus',  'gender', 'birthweight',
        'gestationweekbylmp', 'gestationdaysbylmp',
        'baby_type', 'central_temp', 'apgar_onemin', 'apgar_fivemin',
        'apgar_tenmin', 'motherage', 'conception_type', 'mode_of_delivery',
-       'steroidname', 'numberofdose', 'gestation','uhid']
+       'steroidname', 'numberofdose', 'gestation','uhid','hour_series_x']
 inter = ['dischargestatus', 'mean_bp',
        'sys_bp', 'dia_bp', 'peep', 'pip', 'map', 'tidalvol',
        'minvol', 'ti', 'fio2',
