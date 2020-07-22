@@ -38,7 +38,7 @@ def visualizeDataset(fileName, folderName, uhid, caseType):
         data = pd.read_csv(fileName)
         birthWeight = data.birthweight[0]
         #print('birthWeight=',birthWeight)
-        fig, (ax1, ax2,ax3,ax4,ax5,ax6) = plt.subplots(6, sharex=True)
+        fig, (ax1, ax2,ax3,ax4,ax5,ax6,hdpAX) = plt.subplots(7, sharex=True)
         fig.suptitle('Distributions for '+uhid)
         ax1.set(xlabel='Minutes', ylabel='Continuous Signals')
         ax2.set(xlabel='Minutes', ylabel='Intake')
@@ -46,7 +46,8 @@ def visualizeDataset(fileName, folderName, uhid, caseType):
         ax4.set(xlabel='Minutes', ylabel='Vitals')
         ax5.set(xlabel='Minutes', ylabel='Ventilator')
         ax6.set(xlabel='Minutes', ylabel='Anthropometry')   
-        
+        hdpAX.set(xlabel='Minutes', ylabel='HDP Prediction')
+
         x = data['Unnamed: 0']
         data.currentdateweight = data.currentdateweight - birthWeight
         #print(data.currentdateweight)
@@ -82,8 +83,10 @@ def visualizeDataset(fileName, folderName, uhid, caseType):
         ax4.legend(loc="upper right")    
         ax5.legend(loc="upper right")  
         ax6.legend(loc="upper right") 
-        plt.savefig(path+folderName+uhid+'.png')
-        return True
+        #commented by HS for saving after drawing HDP later in the program
+        #data preperation testing can uncomment this if no need to plot HDP
+        #plt.savefig(path+folderName+uhid+'.png')
+        return True,hdpAX
     except Exception as e:
         print('Exception in data visualization', e)
         PrintException()

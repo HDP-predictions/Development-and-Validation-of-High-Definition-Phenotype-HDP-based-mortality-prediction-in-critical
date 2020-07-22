@@ -72,6 +72,7 @@ print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
 visualFlag = False
 i = 1
+hdpPlotdict = {}
 for row in balanceDS.itertuples():
     try:
         print(i,'---->',getattr(row, 'uhid'), getattr(row, 'dischargestatus')) 
@@ -94,8 +95,11 @@ for row in balanceDS.itertuples():
         #fileName,uhidDataSet = prepare_data(con,patientCaseUHID,typeOfCase,conditionCase,folderName)
         # uncomment below in case csv data is already generated and now lstm needs to be executed
         fileName,uhidDataSet = read_prepare_data(con,patientCaseUHID,typeOfCase,conditionCase,folderName)
-        visualFlag = visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
-        print('UHID',patientCaseUHID,'data visualization done')
+        visualFlag,hdpAX = visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
+        dictEntry = {patientCaseUHID:hdpAX} 
+        hdpPlotdict.update(dictEntry)
+        #print('hdpPlotdict = ',hdpPlotdict)
+        #print('UHID',patientCaseUHID,'data visualization done')
         preparedData = pd.concat([preparedData,uhidDataSet], axis=0, ignore_index=True)
         print('UHID',patientCaseUHID,'data preperation done total number of rows added =',len(uhidDataSet), 'number of columns in new frame='+str(len(uhidDataSet.columns)),'number of columns in total frame='+str(len(preparedData.columns)))        
         #preparedData = preparedData.append(uhidDataSet)
@@ -126,4 +130,4 @@ cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uh
 preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
 #preparedData.to_csv('lstm_analysis.csv')
-predictLSTM(preparedData, fixed, cont, inter)
+predictLSTM(preparedData, fixed, cont, inter,hdpPlotdict)

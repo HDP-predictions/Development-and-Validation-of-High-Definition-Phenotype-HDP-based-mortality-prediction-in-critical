@@ -299,32 +299,39 @@ def make_lstm(gd):
             PrintException()
             return None
 
-def visualizeLSTMOutput(xTestWithUHID):
+def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
     try:
-        for i in xTestWithUHID.uhid.unique():
-            print('Inside visualizeLSTMOutput',i)
+        currentFigure = None
+        path = os.getcwd()       
+        for i in xTestWithUHID.uhid.unique():            
+            print('Inside visualizeLSTMOutput = ',i)
+            hdpAX = hdpPlotdict.get(i)
+            print('hdpAX = ',hdpAX)
             x = xTestWithUHID[xTestWithUHID['uhid']==i]
             deathOrDischargeCase = 'Death'
             print(x.columns)
             #print('case is',x.dischargestatus.head(1))      
             if (x.iloc[0].dischargestatus == 1):
-                deathOrDischargeCase = 'Death '
+                deathOrDischargeCase = 'Death_Cases'
             elif (x.iloc[0].dischargestatus == 0):
-                deathOrDischargeCase = 'Discharge '
-            print('case is',deathOrDischargeCase)
+                deathOrDischargeCase = 'Discharge_Cases'
             y_pred = np.array(x['y_pred']).flatten()
             y_df = y_pred
             rcParams['figure.figsize'] = 20, 6
-            axes = plt.gca()
+            currentFigure = hdpAX.get_figure()
+            print('currentFigure=',currentFigure)
+            axes = currentFigure.gca()
             sns.set(font_scale = 2)
             #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
-            plt.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
-            plt.legend()
+            print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
+            hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
+            hdpAX.legend(loc="upper right") 
+            hdpAX.legend()
             #plt.title(uhid)
-            plt.xlabel('LOS in Time Steps of 15 Minutes',fontsize=18)
-            plt.ylabel('Probability',fontsize=18)
-            axes.set_ylim([0,1])
-        plt.savefig(str(i) + ".png",dpi = 300)
+            axes.set_xlabel('LOS in Time Steps of 15 Minutes')
+            axes.set_ylabel('Probability')
+            axes.set_ylim([0,1])       
+            currentFigure.savefig(path+'/'+deathOrDischargeCase+'/'+str(i)+'.png',dpi = 300)
         return True
     except Exception as e:
         print ('Exception',e)
@@ -332,7 +339,7 @@ def visualizeLSTMOutput(xTestWithUHID):
         return None
 
 #LSTM model
-def lstm_model(n,gd):
+def lstm_model(n,gd,hdpPlotdict):
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weights=True,patience=3)
     auc_roc_inter = []
     val_a = []
@@ -390,9 +397,11 @@ def lstm_model(n,gd):
                 y_answer.append(acc(j))
             #print('y_model',y_model,'y_answer',y_answer)
             print('------------visualization of output Started------------------')
+            #since in previous operation data of 15 mins was processed as one block, so reconverting the results 
+            #to repeat of 15 mins
             yNew = np.repeat(y_pred, 15)
             xTestWithUHID['y_pred'] = yNew
-            visualizeLSTMOutput(xTestWithUHID)
+            visualizeLSTMOutput(xTestWithUHID,hdpPlotdict)
             print('------------visualization of output Done------------------')
             #append validation and training accuracy from each iteration
             val_a.append(v_a)
@@ -419,7 +428,7 @@ def convert_date(x):
     x = str(x)
     return pd.to_datetime(x)
 
-def predictLSTM(gw, fixed, cont, inter):
+def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
     try:
         print('Inside predictLSTM column count=',gw.columns)
         #defining the early stopping criteria
@@ -438,48 +447,48 @@ def predictLSTM(gw, fixed, cont, inter):
         lengthOfContinuous = len(cont) - 2
         gd = gw[fixed]
         print('total length of gd=',len(gd),'gd count',gd.count())
-        an = lstm_model(lengthOfFixed,gd)
+        an = lstm_model(lengthOfFixed,gd,hdpPlotdict)
         f_a.append(an[0])
         print('-----AN-------',an)
         print('---------fixed----------',f_a)
         print(mean_confidence_interval(an[0]))
         """
         gd = gw[inter]
-        an = lstm_model(lengthOfIntermittent,gd)
+        an = lstm_model(lengthOfIntermittent,gd,lstm_model)
         i_a.append(an[0])
         print('inter',i_a)
         print(mean_confidence_interval(an[0]))
 
         gd = gw[cont]
-        an = lstm_model(lengthOfContinuous,gd)
+        an = lstm_model(lengthOfContinuous,gd,lstm_model)
         c_a.append(an[0])
         print('c_a',c_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+INTER------------------
         cont_inter = list(set(cont+inter))
         gd = gw[cont_inter]
-        an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd)
+        an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,lstm_model)
         ci_a.append(an[0])
         print('cont_inter',ci_a)
         print(mean_confidence_interval(an[0]))
         #---------------FIXED+INTER------------------
         fixed_inter = list(set(fixed+inter))
         gd = gw[fixed_inter]
-        an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd)
+        an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,lstm_model)
         fi_a.append(an[0])
         print('fixed_inter',fi_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED------------------
         cont_fixed = list(set(cont+fixed))
         gd = gw[cont_fixed]
-        an = lstm_model(lengthOfFixed+lengthOfContinuous,gd)
+        an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,lstm_model)
         cf_a.append(an[0])
         print('cont_fixed',cf_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED+INTER------------------
         all_cols = list(set(cont+inter+fixed))
         gd = gw[all_cols]
-        an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd)
+        an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,lstm_model)
         a.append(an[0])
         print('all_cols',a)
         print(mean_confidence_interval(an[0]))
