@@ -39,7 +39,7 @@ def visualizeDataset(fileName, folderName, uhid, caseType):
         birthWeight = data.birthweight[0]
         #print('birthWeight=',birthWeight)
         fig, (ax1, ax2,ax3,ax4,ax5,ax6,hdpAX) = plt.subplots(7, sharex=True)
-        fig.suptitle('Distributions for '+uhid)
+        fig.suptitle('Distributions for '+caseType+' '+ uhid)
         ax1.set(xlabel='Minutes', ylabel='Continuous Signals')
         ax2.set(xlabel='Minutes', ylabel='Intake')
         ax3.set(xlabel='Minutes', ylabel='Output')

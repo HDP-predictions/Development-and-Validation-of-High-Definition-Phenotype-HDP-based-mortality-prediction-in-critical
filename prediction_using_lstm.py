@@ -324,13 +324,15 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
             sns.set(font_scale = 2)
             #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
             print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
-            hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
+            #hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
+            hdpAX.plot(np.arange(len(y_pred)),y_pred)
             hdpAX.legend(loc="upper right") 
             hdpAX.legend()
             #plt.title(uhid)
             axes.set_xlabel('LOS in Time Steps of 15 Minutes')
-            axes.set_ylabel('Probability')
+            axes.set_ylabel('HDP Mortality Probability')
             axes.set_ylim([0,1])       
+            axes.set_yticks((0.20,0.40,0.50,0.60,0.80))
             currentFigure.savefig(path+'/'+deathOrDischargeCase+'/'+str(i)+'.png',dpi = 300)
         return True
     except Exception as e:
@@ -369,7 +371,7 @@ def lstm_model(n,gd,hdpPlotdict):
             #training accuracy
             t_a = []
             #fitting the model
-            model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=1,callbacks=[es])
+            model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=5,callbacks=[es])
             #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
             for i in range(len(model.history.history['val_accuracy'])):
                 v_a.append(model.history.history['val_accuracy'][i])
