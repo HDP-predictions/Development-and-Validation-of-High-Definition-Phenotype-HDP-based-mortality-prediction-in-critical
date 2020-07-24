@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+#Reading CSV for 30 patients
 data = pd.read_csv('lstm_analysis.csv')
+#Replacing -999 with NaN values 
 data.fillna(-999,inplace=True)
 cols = ['uhid','pulserate', 'ecg_resprate',
        'spo2', 'heartrate', 'mean_bp', 'sys_bp', 'dia_bp',
@@ -21,12 +22,14 @@ cols = ['uhid','pulserate', 'ecg_resprate',
        'apgar_tenmin', 'motherage', 'conception_type', 'mode_of_delivery',
        'steroidname', 'numberofdose', 'gestation']
 
+#Divide the data set into two sub sets according to discharge and death
 death = data[data['dischargestatus']==1]
 dis = data[data['dischargestatus']==0]
-
+#Calculating Length
 n_dis = len(dis)
 n_dea = len(death)
 
+#Plotting Graphs and calculating imputation of each variable for death cases
 x_series = []
 y_series = []
 counter = -1
@@ -58,6 +61,6 @@ if(counter > 0):
     y_series = []
     counter = 0
   
-
+#Calculating imputation of each variable for Discharge cases
 for i in cols:
     print(i,(len(dis[dis[i]==-999])),((len(dis[dis[i]==-999]))/len(dis))*100)
