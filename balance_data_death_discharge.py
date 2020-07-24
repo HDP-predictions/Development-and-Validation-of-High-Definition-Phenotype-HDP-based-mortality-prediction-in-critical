@@ -213,7 +213,7 @@ def randomize(dis,dea):
     return df
 
 
-def balanceDataset(con):
+def balanceDataset(con, flag):
     cur  = con.cursor()
     #print("connected to database")
 
@@ -228,23 +228,45 @@ def balanceDataset(con):
     dates_detail['add_seconds_admission'] = dates_detail['timeofadmission'].apply(second_addition)
     dates_detail['actual_DOA'] = dates_detail.apply(lambda x: actual_birthdate(x['dateofadmission'], x['add_seconds_admission']), axis=1)
     dates_detail['los'] = dates_detail.apply(lambda x: calculateLOS(x['dischargeddate'], x['actual_DOA']), axis=1)
-    gs1 = dates_detail[dates_detail['birthweight']<=1500]
-    gs2 = dates_detail[(dates_detail['birthweight']>2500)&(dates_detail['birthweight']<3000)]
-    #balancing the dataset
-    death1 = gs1[gs1['dischargestatus']=="Death"]
-    death_l1 = death1.uhid.unique()
-    death2 = gs2[gs2['dischargestatus']=="Death"]
-    death_l2 = death2.uhid.unique()
-    dis1 = gs1[gs1['dischargestatus']=="Discharge"]
-    dis_l1 = dis1.uhid.unique()
-    dis2 = gs2[gs2['dischargestatus']=="Discharge"]
-    dis_l2 = dis2.uhid.unique()
-    #print(len(dis1))
-    final = pd.DataFrame()
-    final_df = pd.DataFrame(columns=dates_detail.columns)
-    d1 = randomize(dis1,death1)
-    d2 = randomize(dis2,death2)
-    gw = pd.concat([d1,d2])
+
+    if flag == True:
+        gs1 = dates_detail[dates_detail['birthweight']<=1500]
+        gs2 = dates_detail[(dates_detail['birthweight']>2500)&(dates_detail['birthweight']<3000)]
+        #balancing the dataset
+        death1 = gs1[gs1['dischargestatus']=="Death"]
+        death_l1 = death1.uhid.unique()
+        death2 = gs2[gs2['dischargestatus']=="Death"]
+        death_l2 = death2.uhid.unique()
+        dis1 = gs1[gs1['dischargestatus']=="Discharge"]
+        dis_l1 = dis1.uhid.unique()
+        dis2 = gs2[gs2['dischargestatus']=="Discharge"]
+        dis_l2 = dis2.uhid.unique()
+        #print(len(dis1))
+        final = pd.DataFrame()
+        final_df = pd.DataFrame(columns=dates_detail.columns)
+        d1 = randomize(dis1,death1)
+        d2 = randomize(dis2,death2)
+        gw = pd.concat([d1,d2])
+    else:
+
+        print("sssssss")
+        gs1 = dates_detail[dates_detail['dischargestatus']=="Death"]
+        gs2 = dates_detail[dates_detail['dischargestatus']=="Discharge"]
+
+        death_length = len(gs1)
+        ids = gs2.uhid.unique()
+        shuffle(ids)
+        discharge_cases = ids[0:death_length]
+
+        discharge = pd.DataFrame()
+        for i in discharge_cases:
+            print(i,"selected ID")
+            x = gs2[gs2.uhid == i]
+            discharge = discharge.append(x,ignore_index = True)
+        gs1['dischargestatus'] = 1
+        discharge['dischargestatus'] = 0
+
+        gw = pd.concat([gs1,discharge])
     #print(gw.uhid.unique())
     gw.to_csv("HDP_Analysis.csv")
     return gw

@@ -62,8 +62,11 @@ con = psycopg2.connect (user = 'postgres',
                 port = '5433',
                 host = 'localhost',                
                 database = 'inicudb')
+
+#The variable would be True if discharge cases are retrieved on the basis of birth weight and gestation
+enablingRandomize = False
 #generate new set of death and discharge cases
-#balanceDS = balanceDataset(con)
+#balanceDS = balanceDataset(con,enablingRandomize)
 #we can also load previously generated set whose data preparation is already done for faster execution
 """
 """
