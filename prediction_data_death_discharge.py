@@ -6,6 +6,7 @@ from balance_data_death_discharge import *
 from data_preparation_hdp import *
 from data_visualization import *
 from prediction_using_lstm import *
+from calculate_imputation import *
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -100,6 +101,7 @@ for row in balanceDS.itertuples():
         hdpPlotdict.update(dictEntry)
         #print('hdpPlotdict = ',hdpPlotdict)
         #print('UHID',patientCaseUHID,'data visualization done')
+        calculateDataImputation(uhidDataSet)
         preparedData = pd.concat([preparedData,uhidDataSet], axis=0, ignore_index=True)
         print('UHID',patientCaseUHID,'data preperation done total number of rows added =',len(uhidDataSet), 'number of columns in new frame='+str(len(uhidDataSet.columns)),'number of columns in total frame='+str(len(preparedData.columns)))        
         #preparedData = preparedData.append(uhidDataSet)
