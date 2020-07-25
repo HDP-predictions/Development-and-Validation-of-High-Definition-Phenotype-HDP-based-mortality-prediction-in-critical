@@ -52,139 +52,6 @@ def mean_confidence_interval(data, confidence=0.95):
     return round(m,3), round(m-h,3), round(m+h,3)
 
 
-# Function to select random patients
-# For given set of death patients, select similar profile discharge patients
-def randomize(dis,dea):
-    #Unnamed: 0 is used as a proxy for LOS in minutes
-    df = pd.DataFrame(columns=dis.columns)
-    #the gestation categories are <26, 26-28, 28-32, and > 32
-    #find out death and discharge case for gestation less than 26 weeks
-    dis_less_26 = dis[dis['gestation']<=26]
-    dea_less_26 = dea[dea['gestation']<=26]
-    dis_less_26.sort_values(['Unnamed: 0','uhid'],ascending=False)
-    dea_less_26.sort_values(['Unnamed: 0','uhid'],ascending=False)
-    #find unirque patient ids for selected gestation
-    dis_less_26_uhid = dis_less_26.uhid.unique()
-    dea_less_26_uhid = dea_less_26.uhid.unique()
-    taken = []
-    tk = set()
-    #iterated over all death cases meeting the gestation category condition
-    for i in dea_less_26.uhid.unique():
-        x_dea = dea_less_26[dea_less_26['uhid']==i]
-        o = dk[dk['uhid']==i]
-        dis_date = o.dischargeddate.iloc[0]
-        x_dea = x_dea[x_dea['hour_series']<=dis_date]
-        x_dea['dischargestatus'] = 1
-        #Unnamed: 0 denotes number of rows per minute for given UHID
-        minutesDataDeathHDPPatient = x_dea['Unnamed: 0'].iloc[0]
-        #Find all discharge cases that meet the condition > = Unnamed: 0
-        x_dis = dis_less_26[dis_less_26['Unnamed: 0']>=minutesDataDeathHDPPatient]
-        #remove the selected UHID from the available selection candidates
-        ids_dis = set(x_dis.uhid.unique())
-        ids = list(ids_dis - ids_dis.intersection(tk))
-        shuffle(ids)
-        x = dis_less_26[dis_less_26['uhid']==ids[0]]
-        o1 = dk[dk['uhid']==ids[0]]
-        dis_date1 = o1.dischargeddate.iloc[0]
-        x = x[x['hour_series']<=dis_date1]
-        x['dischargestatus'] = 0
-        #pick the data from discharge patient for same number of minutes as in death case
-        x = x[:len(x_dea)]
-        y = pd.concat([x,x_dea])
-        taken.append(ids[0])
-        #remove the selected UHID from the available selection candidates by inserting it in tk
-        tk = set(taken)
-        df = df.append(y,ignore_index=True)
-    taken = []
-    tk = set()
-    dis_less_28 = dis[(dis['gestation']>26)&(dis['gestation']<=28)]
-    dea_less_28 = dea[(dea['gestation']>26)&(dea['gestation']<=28)]
-    dis_less_28.sort_values(['Unnamed: 0','uhid'],ascending=False)
-    dea_less_28.sort_values(['Unnamed: 0','uhid'],ascending=False)
-    dis_less_28_uhid = dis_less_28.uhid.unique()
-    dea_less_28_uhid = dea_less_28.uhid.unique()
-    for i in dea_less_28.uhid.unique():
-        x_dea = dea_less_28[dea_less_28['uhid']==i]
-        o = dk[dk['uhid']==i]
-        dis_date = o.dischargeddate.iloc[0]
-        x_dea = x_dea[x_dea['hour_series']<=dis_date]
-        x_dea['dischargestatus'] = 1
-        l = x_dea['Unnamed: 0'].iloc[0]
-        x_dis = dis_less_28[dis_less_28['Unnamed: 0']>l]
-        ids_dis = set(x_dis.uhid.unique())
-        ids = list(ids_dis - ids_dis.intersection(tk))
-        shuffle(ids)
-        x = dis_less_28[dis_less_28['uhid']==ids[0]]
-        o1 = dk[dk['uhid']==ids[0]]
-        dis_date1 = o1.dischargeddate.iloc[0]
-        x = x[x['hour_series']<=dis_date1]
-        x['dischargestatus'] = 0
-        x = x[:len(x_dea)]
-        y = pd.concat([x,x_dea])
-        taken.append(ids[0])
-        tk = set(taken)
-        df = df.append(y,ignore_index=True)
-    taken = []
-    tk = set()
-    dis_less_32 = dis[(dis['gestation']>28)&(dis['gestation']<=32)]
-    dea_less_32 = dea[(dea['gestation']>28)&(dea['gestation']<=32)]
-    dis_less_32.sort_values(['Unnamed: 0','uhid'],ascending=False)
-    dea_less_32.sort_values(['Unnamed: 0','uhid'],ascending=False)
-    dis_less_32_uhid = dis_less_32.uhid.unique()
-    dea_less_32_uhid = dea_less_32.uhid.unique()
-    for i in dea_less_32.uhid.unique():
-        x_dea = dea_less_32[dea_less_32['uhid']==i]
-        o = dk[dk['uhid']==i]
-        dis_date = o.dischargeddate.iloc[0]
-        x_dea = x_dea[x_dea['hour_series']<=dis_date]
-        x_dea['dischargestatus'] = 1
-        l = x_dea['Unnamed: 0'].iloc[0]
-        x_dis = dis_less_32[dis_less_32['Unnamed: 0']>l]
-        ids_dis = set(x_dis.uhid.unique())
-        ids = list(ids_dis - ids_dis.intersection(tk))
-        shuffle(ids)
-        x = dis_less_32[dis_less_32['uhid']==ids[0]]
-        o1 = dk[dk['uhid']==ids[0]]
-        dis_date1 = o1.dischargeddate.iloc[0]
-        x = x[x['hour_series']<=dis_date1]
-        x['dischargestatus'] = 0
-        x = x[:len(x_dea)]
-        y = pd.concat([x,x_dea])
-        taken.append(ids[0])
-        tk = set(taken)
-        df = df.append(y,ignore_index=True)
-    taken = []
-    tk = set()
-    dis_32 = dis[dis['gestation']>32]
-    dea_32 = dea[dea['gestation']>32]
-    dis_32.sort_values(['Unnamed: 0','uhid'],ascending=False)
-    dea_32.sort_values(['Unnamed: 0','uhid'],ascending=False)
-    dis_32_uhid = dis_32.uhid.unique()
-    dea_32_uhid = dea_32.uhid.unique()
-    for i in dea_32.uhid.unique():
-        x_dea = dea_32[dea_32['uhid']==i]
-        o = dk[dk['uhid']==i]
-        dis_date = o.dischargeddate.iloc[0]
-        x_dea = x_dea[x_dea['hour_series']<=dis_date]
-        x_dea['dischargestatus'] = 1
-        l = x_dea['Unnamed: 0'].iloc[0]
-        x_dis = dis_32[dis_32['Unnamed: 0']>l]
-        ids_dis = set(x_dis.uhid.unique())
-        ids = list(ids_dis - ids_dis.intersection(tk))
-        shuffle(ids)
-        x = dis_32[dis_32['uhid']==ids[0]]
-        o1 = dk[dk['uhid']==ids[0]]
-        dis_date1 = o1.dischargeddate.iloc[0]
-        x = x[x['hour_series']<=dis_date1]
-        x['dischargestatus'] = 0
-        x = x[:len(x_dea)]
-        y = pd.concat([x,x_dea])
-        taken.append(ids[0])
-        tk = set(taken)
-        df = df.append(y,ignore_index=True)
-
-    return df
-
 #Function for converting data to multiples of 15
 def range_finder(x):
     length = x
@@ -209,14 +76,12 @@ def make_lstm_visualize(gd):
         y_train = train['dischargestatus']
         X_train = train.drop('dischargestatus',axis=1)
         X_train = X_train.drop('uhid',axis=1)
-        X_train = X_train.drop('hour_series_x',axis=1)
         #X_train = X_train.drop('visittime',axis=1)
 
         y_test = test['dischargestatus']
         print('test uhid=',test.uhid.unique())
         X_test = test.drop('dischargestatus',axis=1)
         X_test = X_test.drop('uhid',axis=1)
-        X_test = X_test.drop('hour_series_x',axis=1)        
         auc_roc_inter = []
         val_a = []
         train_a = []
@@ -318,16 +183,18 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
             y_pred = np.array(x['y_pred']).flatten()
             y_df = y_pred
             rcParams['figure.figsize'] = 20, 6
-            currentFigure = hdpAX.get_figure()
+            if not(hdpAX is None) :
+                currentFigure = hdpAX.get_figure()
             print('currentFigure=',currentFigure)
             axes = currentFigure.gca()
             sns.set(font_scale = 2)
             #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
             print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
             #hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
-            hdpAX.plot(np.arange(len(y_pred)),y_pred)
-            hdpAX.legend(loc="upper right") 
-            hdpAX.legend()
+            if not(hdpAX is None) :
+                hdpAX.plot(np.arange(len(y_pred)),y_pred)
+                hdpAX.legend(loc="upper right") 
+                hdpAX.legend()
             #plt.title(uhid)
             axes.set_xlabel('LOS in Time Steps of 15 Minutes')
             axes.set_ylabel('HDP Mortality Probability')
@@ -347,7 +214,7 @@ def lstm_model(n,gd,hdpPlotdict):
     val_a = []
     train_a = []
     print('-----------Inside lstm model-------------',n,len(gd))
-    for i in range(1):
+    for i in range(5):
         try:
             print('-----------Iteration No-------------=',i)
             print('-----------gd.uhid-------------=',gd.uhid.unique())
@@ -442,7 +309,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         fi_a = []
         a = []
         #reduced 2 for uhid and dischargestatus, 1 extra for hour_series - temporary testing
-        lengthOfFixed = len(fixed) - 3
+        lengthOfFixed = len(fixed) - 2
         #reduced 2 for uhid and dischargestatus
         lengthOfIntermittent = len(inter) - 2
         #reduced 2 for uhid and dischargestatus
@@ -454,7 +321,6 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         print('-----AN-------',an)
         print('---------fixed----------',f_a)
         print(mean_confidence_interval(an[0]))
-        """
         gd = gw[inter]
         an = lstm_model(lengthOfIntermittent,gd,lstm_model)
         i_a.append(an[0])
@@ -508,8 +374,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         print('Cont+Fixed')
         print(mean_confidence_interval(list(itertools.chain(*cf_a))))
         print('All')
-        print(mean_confidence_interval(list(itertools.chain(*a)))
-        """
+        print(mean_confidence_interval(list(itertools.chain(*a))))
         return True
     except Exception as e:
         print('Exception in Prediction', e)
