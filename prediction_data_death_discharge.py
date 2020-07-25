@@ -60,18 +60,18 @@ dischargeCase = 0
 print("---------Balancing Data----------")
 con = psycopg2.connect (user = 'postgres',
                 password = 'postgres',
-                port = '5433',
+                port = '5432',
                 host = 'localhost',                
                 database = 'inicudb')
 
 #The variable would be True if discharge cases are retrieved on the basis of birth weight and gestation
 enablingRandomize = False
 #generate new set of death and discharge cases
-#balanceDS = balanceDataset(con,enablingRandomize)
+balanceDS = balanceDataset(con,enablingRandomize)
 #we can also load previously generated set whose data preparation is already done for faster execution
 """
 """
-balanceDS = pd.read_csv('death_discharge_set.csv')
+#balanceDS = pd.read_csv('death_discharge_set.csv')
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
@@ -105,7 +105,7 @@ for row in balanceDS.itertuples():
         hdpPlotdict.update(dictEntry)
         #print('hdpPlotdict = ',hdpPlotdict)
         #print('UHID',patientCaseUHID,'data visualization done')
-        calculateDataImputation(uhidDataSet)
+        #calculateDataImputation(uhidDataSet)
         preparedData = pd.concat([preparedData,uhidDataSet], axis=0, ignore_index=True)
         print('UHID',patientCaseUHID,'data preperation done total number of rows added =',len(uhidDataSet), 'number of columns in new frame='+str(len(uhidDataSet.columns)),'number of columns in total frame='+str(len(preparedData.columns)))        
         #preparedData = preparedData.append(uhidDataSet)
@@ -122,7 +122,7 @@ fixed = ['dischargestatus',  'gender', 'birthweight',
        'gestationweekbylmp', 'gestationdaysbylmp',
        'baby_type', 'central_temp', 'apgar_onemin', 'apgar_fivemin',
        'apgar_tenmin', 'motherage', 'conception_type', 'mode_of_delivery',
-       'steroidname', 'numberofdose', 'gestation','uhid','hour_series_x']
+       'steroidname', 'numberofdose', 'gestation','uhid']
 inter = ['dischargestatus', 'mean_bp',
        'sys_bp', 'dia_bp', 'peep', 'pip', 'map', 'tidalvol',
        'minvol', 'ti', 'fio2',

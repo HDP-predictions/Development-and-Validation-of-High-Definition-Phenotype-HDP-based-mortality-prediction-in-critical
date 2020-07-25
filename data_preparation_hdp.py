@@ -369,11 +369,19 @@ def addUrineRelatedData(con,schemaName,patientCaseUHID,uhid,dt):
                         if(x.urine.iloc[j] != None):
                             urine_value = float(x.urine.iloc[j])
                             if(~math.isnan(urine_value) and (urine_value >0)):
-                                x.loc[j,'time_divide'] = (pd.to_datetime(str(x.entry_timestamp.iloc[j]).split("+")[0]) - startTime).total_seconds()
-                                startTime = pd.to_datetime(str(x.entry_timestamp.iloc[j]).split("+")[0])
+                                xEntryTimeEntry = str(x.entry_timestamp.iloc[j])
+                                if '+' in xEntryTimeEntry:
+                                    x.loc[j,'time_divide'] = (pd.to_datetime(xEntryTimeEntry.split("+")[0]) - startTime).total_seconds()
+                                    startTime = pd.to_datetime(xEntryTimeEntry.split("+")[0])
+                                elif '-' in xEntryTimeEntry:
+                                    x.loc[j,'time_divide'] = (pd.to_datetime(xEntryTimeEntry.split("-")[0]) - startTime).total_seconds()
+                                    startTime = pd.to_datetime(xEntryTimeEntry.split("-")[0])
                     #print(x.loc[j,'time_divide'])
                 except Exception as e:
-                    print(j,'Exception is',e)
+                    print('j= ',j,' startTime=',startTime)  
+                    print('x.entry_timestamp.iloc[j]',x.entry_timestamp.iloc[j])                  
+                    print(j,'xEntryTimeEntry=',xEntryTimeEntry,' Exception is',e)
+                    PrintException()
                     continue
             dg = dg.append(x,ignore_index=True)  
         dg = dg.sort_values('hour_series')
