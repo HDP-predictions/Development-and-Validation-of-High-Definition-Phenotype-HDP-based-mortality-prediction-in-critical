@@ -29,6 +29,7 @@ from keras.models import Model
 from prettytable import PrettyTable
 from random import shuffle
 from pylab import rcParams
+from data_visualization import *
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -111,58 +112,6 @@ def make_lstm_visualize(gd):
             PrintException()
             return None
 
-def make_lstm(gd):
-    try:
-        print('--------inside make_lstm')
-        final_df = pd.DataFrame(columns=gd.columns)
-        ids = gd.uhid.unique()
-        #print('------inside make lstm---unique uhid count =',len(ids))
-        shuffle(ids)
-        for i in ids:
-            x = gd[gd['uhid']==i]
-            x = x[range_finder(len(x)):len(x)]
-            final_df = final_df.append(x,ignore_index=True)
-        final_df.fillna(-999,inplace=True)
-        train = final_df[:split_70(len(final_df))]
-        test = final_df[split_70(len(final_df)):]
-        print('train uhid=',train.uhid.unique())
-        y_train = train['dischargestatus']
-        X_train = train.drop('dischargestatus',axis=1)
-        X_train = X_train.drop('uhid',axis=1)
-        #X_train = X_train.drop('visittime',axis=1)
-
-        y_test = test['dischargestatus']
-        print('test uhid=',test.uhid.unique())
-        X_test = test.drop('dischargestatus',axis=1)
-        X_test = X_test.drop('uhid',axis=1)
-        auc_roc_inter = []
-        val_a = []
-        train_a = []
-        #converting the data into a numpy array
-        X_train = np.array(X_train)
-        y_train = np.array(y_train)
-        X_test = np.array(X_test)
-        y_test = np.array(y_test)
-        ytrain1 = []
-        for i in range(0,len(y_train),15):
-            #print(i)
-            y1 = y_train[i:i+15]
-            ytrain1.append(y1[-1])
-
-        ytest1 = []
-        for i in range(0,len(y_test),15):
-            #print(i)
-            y1 = y_test[i:i+15]
-            ytest1.append(y1[-1])
-        ytrain1 = np.array(ytrain1)
-        ytest1 = np.array(ytest1)
-        Xtrain = np.reshape(X_train, (-1, 15, X_train.shape[1]))
-        Xtest = np.reshape(X_test, (-1, 15, X_test.shape[1]))
-        return Xtrain,Xtest,ytrain1,ytest1
-    except Exception as e:
-            print('Error in make_lstm method',e)
-            PrintException()
-            return None
 
 def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
     try:
@@ -185,22 +134,21 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
             rcParams['figure.figsize'] = 20, 6
             if not(hdpAX is None) :
                 currentFigure = hdpAX.get_figure()
-            print('currentFigure=',currentFigure)
-            axes = currentFigure.gca()
-            sns.set(font_scale = 2)
-            #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
-            print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
-            #hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
-            if not(hdpAX is None) :
+                print('currentFigure=',currentFigure)
+                axes = currentFigure.gca()
+                sns.set(font_scale = 2)
+                #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
+                print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
+                #hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
                 hdpAX.plot(np.arange(len(y_pred)),y_pred)
                 hdpAX.legend(loc="upper right") 
                 hdpAX.legend()
-            #plt.title(uhid)
-            axes.set_xlabel('LOS in Time Steps of 15 Minutes')
-            axes.set_ylabel('HDP Mortality Probability')
-            axes.set_ylim([0,1])       
-            axes.set_yticks((0.20,0.40,0.50,0.60,0.80))
-            currentFigure.savefig(path+'/'+deathOrDischargeCase+'/'+str(i)+'.png',dpi = 300)
+                #plt.title(uhid)
+                axes.set_xlabel('LOS in Time Steps of 15 Minutes')
+                axes.set_ylabel('HDP Mortality Probability')
+                axes.set_ylim([0,1])       
+                axes.set_yticks((0.20,0.40,0.50,0.60,0.80))
+                currentFigure.savefig(path+'/'+deathOrDischargeCase+'/'+str(i)+'.png',dpi = 300)
         return True
     except Exception as e:
         print ('Exception',e)
@@ -238,7 +186,7 @@ def lstm_model(n,gd,hdpPlotdict):
             #training accuracy
             t_a = []
             #fitting the model
-            model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=5,callbacks=[es])
+            model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=1,callbacks=[es])
             #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
             for i in range(len(model.history.history['val_accuracy'])):
                 v_a.append(model.history.history['val_accuracy'][i])
@@ -314,6 +262,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         lengthOfIntermittent = len(inter) - 2
         #reduced 2 for uhid and dischargestatus
         lengthOfContinuous = len(cont) - 2
+        """
         gd = gw[fixed]
         print('total length of gd=',len(gd),'gd count',gd.count())
         an = lstm_model(lengthOfFixed,gd,hdpPlotdict)
@@ -326,37 +275,49 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         i_a.append(an[0])
         print('inter',i_a)
         print(mean_confidence_interval(an[0]))
-
+        """
         gd = gw[cont]
-        an = lstm_model(lengthOfContinuous,gd,lstm_model)
+        #this will remove all indexes where continuous data is not present
+        gd = gd[gd["spo2"] != -999]
+        print('---------------AFTER CHECK of SPO2 =-9999--------------')
+        an = lstm_model(lengthOfContinuous,gd,hdpPlotdict)
         c_a.append(an[0])
         print('c_a',c_a)
+        visualizeDataFrameDataset(gd,'cont')    
         print(mean_confidence_interval(an[0]))
+        """
+
         #---------------CONT+INTER------------------
         cont_inter = list(set(cont+inter))
         gd = gw[cont_inter]
-        an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,lstm_model)
+         #this will remove all indexes where continuous data is not present
+        gd = gd[gd["spo2"] != -999]       
+        an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict)
         ci_a.append(an[0])
         print('cont_inter',ci_a)
         print(mean_confidence_interval(an[0]))
         #---------------FIXED+INTER------------------
         fixed_inter = list(set(fixed+inter))
         gd = gw[fixed_inter]
-        an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,lstm_model)
+        an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,hdpPlotdict)
         fi_a.append(an[0])
         print('fixed_inter',fi_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED------------------
         cont_fixed = list(set(cont+fixed))
         gd = gw[cont_fixed]
-        an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,lstm_model)
+        #this will remove all indexes where continuous data is not present
+        gd = gd[gd["spo2"] != -999]        
+        an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,hdpPlotdict)
         cf_a.append(an[0])
         print('cont_fixed',cf_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED+INTER------------------
         all_cols = list(set(cont+inter+fixed))
         gd = gw[all_cols]
-        an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,lstm_model)
+        #this will remove all indexes where continuous data is not present
+        gd = gd[gd["spo2"] != -999]        
+        an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict)
         a.append(an[0])
         print('all_cols',a)
         print(mean_confidence_interval(an[0]))
@@ -375,6 +336,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         print(mean_confidence_interval(list(itertools.chain(*cf_a))))
         print('All')
         print(mean_confidence_interval(list(itertools.chain(*a))))
+        """
         return True
     except Exception as e:
         print('Exception in Prediction', e)
