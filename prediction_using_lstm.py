@@ -144,12 +144,12 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
         currentFigure = None
         path = os.getcwd()       
         for i in xTestWithUHID.uhid.unique():            
-            print('Inside visualizeLSTMOutput = ',i)
+            #print('Inside visualizeLSTMOutput = ',i)
             hdpAX = hdpPlotdict.get(i)
             #print('hdpAX = ',hdpAX)
             x = xTestWithUHID[xTestWithUHID['uhid']==i]
             deathOrDischargeCase = 'Death'
-            print(x.columns)
+            #print(x.columns)
             #print('case is',x.dischargestatus.head(1))      
             if (x.iloc[0].dischargestatus == 1):
                 deathOrDischargeCase = 'Death_Cases'
