@@ -39,9 +39,9 @@ def visualizeDataFrameDataset(xTestWithUHID,typeOfData):
             #print('birthWeight=',birthWeight)
             fig, (ax1, ax2,ax3,ax4,ax5,ax6,hdpAX) = plt.subplots(7, sharex=True)
             fig.suptitle('Distributions for '+ i)
-            print('-----DATA---=',data)
+            #print('-----DATA---=',data)
             x = range(0,len(data),1)
-            print('-----X---=',x)
+            #print('-----X---=',x)
             if (typeOfData == 'cont'):
                 ax1.set(xlabel='Minutes', ylabel='Continuous Signals')
                 ax1.plot( x, 'spo2',   'b-', data=data)

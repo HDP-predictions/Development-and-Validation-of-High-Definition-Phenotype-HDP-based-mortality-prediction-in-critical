@@ -137,4 +137,4 @@ cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uh
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
 preparedData.to_csv('lstm_analysis.csv')
 predictLSTM(preparedData, fixed, cont, inter,hdpPlotdict)
-predictLRM(preparedData)
+#predictLRM(preparedData)

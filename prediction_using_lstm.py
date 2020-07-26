@@ -73,14 +73,24 @@ def make_lstm_visualize(gd):
         final_df.fillna(-999,inplace=True)
         train = final_df[:split_70(len(final_df))]
         test = final_df[split_70(len(final_df)):]
-        print('train uhid=',train.uhid.unique())
+
         y_train = train['dischargestatus']
         X_train = train.drop('dischargestatus',axis=1)
         X_train = X_train.drop('uhid',axis=1)
         #X_train = X_train.drop('visittime',axis=1)
 
         y_test = test['dischargestatus']
-        print('test uhid=',test.uhid.unique())
+
+        print('train uhid length=',len(train.uhid.unique()), ' UHID =', train.uhid.unique())
+        print('test uhid length=',len(test.uhid.unique()), ' UHID =', test.uhid.unique())
+
+        #how many rows of machine data is present for death and discharge cases in test and train
+        print('Train death case  machine correct length =', len(train[train['dischargestatus']==1 and train['spo2']!=-999]))
+        print('Train discharge case  machine correct length =', len(train[train['dischargestatus']==0 and train['spo2']!=-999]))
+
+        print('Test death case  machine correct length =', len(test[test['dischargestatus']==1 and test['spo2']!=-999]))
+        print('Test discharge case  machine correct length =', len(test[test['dischargestatus']==0 and test['spo2']!=-999]))
+
         X_test = test.drop('dischargestatus',axis=1)
         X_test = X_test.drop('uhid',axis=1)
         auc_roc_inter = []
@@ -282,7 +292,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         print('---------------AFTER CHECK of SPO2 =-9999--------------')
         an = lstm_model(lengthOfContinuous,gd,hdpPlotdict)
         c_a.append(an[0])
-        print('c_a',c_a)
+        print('----------c_a----------->',c_a)
         visualizeDataFrameDataset(gd,'cont')    
         print(mean_confidence_interval(an[0]))
         """

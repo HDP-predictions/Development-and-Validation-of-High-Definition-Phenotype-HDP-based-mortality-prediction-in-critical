@@ -230,6 +230,7 @@ def balanceDataset(con, flag):
     dates_detail['los'] = dates_detail.apply(lambda x: calculateLOS(x['dischargeddate'], x['actual_DOA']), axis=1)
 
     if flag == True:
+        print("-------------Randomization used on gestation or weight condition--------")       
         gs1 = dates_detail[dates_detail['birthweight']<=1500]
         gs2 = dates_detail[(dates_detail['birthweight']>2500)&(dates_detail['birthweight']<3000)]
         #balancing the dataset
@@ -249,15 +250,16 @@ def balanceDataset(con, flag):
         gw = pd.concat([d1,d2])
     else:
 
-        print("sssssss")
+        print("-------------no randomization based on gestation or weight - equal number of babies selected from discharge without any condition--------")
         gs1 = dates_detail[dates_detail['dischargestatus']=="Death"]
         gs2 = dates_detail[dates_detail['dischargestatus']=="Discharge"]
 
         death_length = len(gs1)
+        print('Length of death ==>',death_length)
         ids = gs2.uhid.unique()
         shuffle(ids)
         discharge_cases = ids[0:death_length]
-
+        print('Length of discharge_cases ==>',len(discharge_cases))
         discharge = pd.DataFrame()
         for i in discharge_cases:
             print(i,"selected ID")
@@ -265,7 +267,7 @@ def balanceDataset(con, flag):
             discharge = discharge.append(x,ignore_index = True)
         gs1['dischargestatus'] = 1
         discharge['dischargestatus'] = 0
-
+        #discharge cases may or may not have data -- can we check for continuous data??
         gw = pd.concat([gs1,discharge])
     #print(gw.uhid.unique())
     gw.to_csv("HDP_Analysis.csv")
