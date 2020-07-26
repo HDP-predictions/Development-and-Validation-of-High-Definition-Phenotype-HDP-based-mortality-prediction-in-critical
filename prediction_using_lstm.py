@@ -84,12 +84,28 @@ def make_lstm_visualize(gd):
         print('train uhid length=',len(train.uhid.unique()), ' UHID =', train.uhid.unique())
         print('test uhid length=',len(test.uhid.unique()), ' UHID =', test.uhid.unique())
 
+        #train.to_csv('train_hdp.csv')
+        #test.to_csv('test_hdp.csv')
         #how many rows of machine data is present for death and discharge cases in test and train
-        print('Train death case  machine correct length =', len(train[train['dischargestatus']==1 and train['spo2']!=-999]))
-        print('Train discharge case  machine correct length =', len(train[train['dischargestatus']==0 and train['spo2']!=-999]))
+        deathTrain = train[train['dischargestatus']==1]
+        dischargeTrain = train[train['dischargestatus']==0]
+        print('Train death case  total length =', len(deathTrain))
+        print('Train discharge case  total length =', len(dischargeTrain))
+        #and test['spo2']!=-999
+        deathTrain = deathTrain[deathTrain['spo2']!=-999]
+        dischargeTrain = dischargeTrain[dischargeTrain['spo2']!=-999]
+        print('Train death case  machine correct length =', len(deathTrain))
+        print('Train discharge case  machine correct length =', len(dischargeTrain))
 
-        print('Test death case  machine correct length =', len(test[test['dischargestatus']==1 and test['spo2']!=-999]))
-        print('Test discharge case  machine correct length =', len(test[test['dischargestatus']==0 and test['spo2']!=-999]))
+        deathTest = test[test['dischargestatus']==1]
+        dischargeTest = test[test['dischargestatus']==0]
+        print('Test death case  total length =', len(deathTest))
+        print('Test discharge case  total length =', len(dischargeTest))
+        deathTest = deathTest[deathTest['spo2']!=-999]
+        dischargeTest = dischargeTest[dischargeTest['spo2']!=-999]
+
+        print('Test death case  machine correct length =', len(deathTest))
+        print('Test discharge case  machine correct length =', len(dischargeTest))
 
         X_test = test.drop('dischargestatus',axis=1)
         X_test = X_test.drop('uhid',axis=1)
@@ -130,7 +146,7 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
         for i in xTestWithUHID.uhid.unique():            
             print('Inside visualizeLSTMOutput = ',i)
             hdpAX = hdpPlotdict.get(i)
-            print('hdpAX = ',hdpAX)
+            #print('hdpAX = ',hdpAX)
             x = xTestWithUHID[xTestWithUHID['uhid']==i]
             deathOrDischargeCase = 'Death'
             print(x.columns)
@@ -144,11 +160,11 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
             rcParams['figure.figsize'] = 20, 6
             if not(hdpAX is None) :
                 currentFigure = hdpAX.get_figure()
-                print('currentFigure=',currentFigure)
+                #print('currentFigure=',currentFigure)
                 axes = currentFigure.gca()
                 sns.set(font_scale = 2)
                 #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
-                print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
+                #print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
                 #hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
                 hdpAX.plot(np.arange(len(y_pred)),y_pred)
                 hdpAX.legend(loc="upper right") 
