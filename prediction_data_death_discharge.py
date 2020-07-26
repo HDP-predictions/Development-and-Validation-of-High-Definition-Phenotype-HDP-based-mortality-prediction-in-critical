@@ -7,6 +7,7 @@ from data_preparation_hdp import *
 from data_visualization import *
 from prediction_using_lstm import *
 from calculate_imputation import *
+from prediction_lrm import *
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -136,3 +137,4 @@ cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uh
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
 preparedData.to_csv('lstm_analysis.csv')
 predictLSTM(preparedData, fixed, cont, inter,hdpPlotdict)
+predictLRM(preparedData)
