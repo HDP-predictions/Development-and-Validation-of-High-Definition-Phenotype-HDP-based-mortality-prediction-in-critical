@@ -30,6 +30,7 @@ from prettytable import PrettyTable
 from random import shuffle
 from pylab import rcParams
 from data_visualization import *
+import random
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -71,8 +72,32 @@ def make_lstm_visualize(gd):
             x = x[range_finder(len(x)):len(x)]
             final_df = final_df.append(x,ignore_index=True)
         final_df.fillna(-999,inplace=True)
-        train = final_df[:split_70(len(final_df))]
-        test = final_df[split_70(len(final_df)):]
+
+        ids = final_df.uhid.unique()
+        random.shuffle(ids)
+        print(ids)
+
+        #Calculating Death Count
+        death_count = final_df[final_df.dischargestatus == 1]
+
+        #Getting the 70% percent value for training model
+        train_count = int(0.7 * len(ids))
+        print(train_count)
+        #baby_70 is used for training (70%)
+        baby_70 = ids[0:train_count]
+        print(baby_70)
+        #baby_30 is used for testing (30%)
+        baby_30 = ids[train_count:]
+        print(baby_30)
+        train = pd.DataFrame()
+        for i in baby_70:
+            x = final_df[final_df.uhid == i]
+            train = train.append(x,ignore_index = True)
+
+        test = pd.DataFrame()
+        for i in baby_30:
+            x = final_df[final_df.uhid == i]
+            test = test.append(x,ignore_index = True)
 
         y_train = train['dischargestatus']
         X_train = train.drop('dischargestatus',axis=1)
@@ -288,7 +313,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         lengthOfIntermittent = len(inter) - 2
         #reduced 2 for uhid and dischargestatus
         lengthOfContinuous = len(cont) - 2
-        """
+        
         gd = gw[fixed]
         print('total length of gd=',len(gd),'gd count',gd.count())
         an = lstm_model(lengthOfFixed,gd,hdpPlotdict)
@@ -301,7 +326,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         i_a.append(an[0])
         print('inter',i_a)
         print(mean_confidence_interval(an[0]))
-        """
+        
         gd = gw[cont]
         #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]
@@ -311,7 +336,6 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         print('----------c_a----------->',c_a)
         visualizeDataFrameDataset(gd,'cont')    
         print(mean_confidence_interval(an[0]))
-        """
 
         #---------------CONT+INTER------------------
         cont_inter = list(set(cont+inter))
@@ -362,7 +386,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         print(mean_confidence_interval(list(itertools.chain(*cf_a))))
         print('All')
         print(mean_confidence_interval(list(itertools.chain(*a))))
-        """
+    
         return True
     except Exception as e:
         print('Exception in Prediction', e)

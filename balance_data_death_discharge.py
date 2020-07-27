@@ -217,13 +217,71 @@ def balanceDataset(con, flag):
     cur  = con.cursor()
     #print("connected to database")
 
+    #Firstly taking only Death cases
     cur10 = con.cursor()
-    cur10.execute("SELECT DISTINCT(uhid) as uhid,birthweight,dischargestatus, round( CAST((gestationweekbylmp + gestationdaysbylmp/7::float) as numeric),2) as gestation, dischargeddate, dateofadmission, timeofadmission FROM apollo.baby_detail WHERE  dateofadmission >= '2018-07-01' AND dateofadmission <= '2020-05-31' and UHID IN  (select distinct(uhid) from apollo.babyfeed_detail where uhid in  ( select distinct(uhid) from apollo.baby_visit where uhid in (select  distinct(uhid) from apollo.nursing_vitalparameters where uhid in ( select distinct(t1.uhid) from apollo.device_monitor_detail as t1 LEFT JOIN apollo.baby_detail AS t2 ON t1.uhid=t2.uhid WHERE t1.starttime <t2.dischargeddate and t2.isreadmitted is not true UNION select distinct(t1.uhid) from apollo.device_monitor_detail_dump as t1 LEFT JOIN apollo.baby_detail AS t2 ON t1.uhid=t2.uhid  WHERE t1.starttime < t2.dischargeddate and t2.isreadmitted is not true))))and (dischargestatus = 'Death'  OR dischargestatus = 'Discharge') and isreadmitted is not true and gestationweekbylmp is not null and birthweight is not null;")
+    cur10.execute("SELECT DISTINCT(uhid) as uhid,birthweight,dischargestatus, round( CAST((gestationweekbylmp + gestationdaysbylmp/7::float) as numeric),2) as gestation, dischargeddate, dateofadmission, timeofadmission FROM apollo.baby_detail WHERE  dateofadmission >= '2018-07-01' AND dateofadmission <= '2020-05-31' and UHID IN  (select distinct(uhid) from apollo.babyfeed_detail where uhid in  ( select distinct(uhid) from apollo.baby_visit where uhid in (select  distinct(uhid) from apollo.nursing_vitalparameters where uhid in ( select distinct(t1.uhid) from apollo.device_monitor_detail as t1 LEFT JOIN apollo.baby_detail AS t2 ON t1.uhid=t2.uhid WHERE t1.starttime <t2.dischargeddate and t2.isreadmitted is not true UNION select distinct(t1.uhid) from apollo.device_monitor_detail_dump as t1 LEFT JOIN apollo.baby_detail AS t2 ON t1.uhid=t2.uhid  WHERE t1.starttime < t2.dischargeddate and t2.isreadmitted is not true))))and (dischargestatus = 'Death') and isreadmitted is not true and gestationweekbylmp is not null and birthweight is not null;")
     cols10 = list(map(lambda x: x[0], cur10.description))
-    gs = pd.DataFrame(cur10.fetchall(),columns=cols10)
+    death_cases = pd.DataFrame(cur10.fetchall(),columns=cols10)
+
+    #calculating count of spo2 value in each death patient
+    maxSpo2Count = 0
+    spo2CountList = []
+    cur11 = con.cursor()
+
+    for uhid in  death_cases.uhid.unique():
+        cur11.execute("select t1.starttime from apollo.device_monitor_detail as t1 WHERE t1.uhid ='" + uhid + "' and t1.spo2 is not null  UNION select t2.starttime from apollo.device_monitor_detail_dump as t2  WHERE t2.uhid = '" + uhid + "' and t2.spo2 is not null")
+        cols11 = list(map(lambda x: x[0], cur11.description))
+        uhid_data = pd.DataFrame(cur11.fetchall(),columns=cols11)
+        print(uhid)
+        # if(len(uhid_data)) > maxSpo2Count:
+        #     maxSpo2Count = len(uhid_data)
+        print(len(uhid_data))
+        spo2CountList.append(len(uhid_data))
+
+    #Sorted in Descending order
+    spo2CountList.sort(reverse = True)
+
+    #Now taking up only the discharge cases
+    cur10 = con.cursor()
+    cur10.execute("SELECT DISTINCT(uhid) as uhid,birthweight,dischargestatus, round( CAST((gestationweekbylmp + gestationdaysbylmp/7::float) as numeric),2) as gestation, dischargeddate, dateofadmission, timeofadmission FROM apollo.baby_detail WHERE  dateofadmission >= '2018-07-01' AND dateofadmission <= '2020-05-31' and UHID IN  (select distinct(uhid) from apollo.babyfeed_detail where uhid in  ( select distinct(uhid) from apollo.baby_visit where uhid in (select  distinct(uhid) from apollo.nursing_vitalparameters where uhid in ( select distinct(t1.uhid) from apollo.device_monitor_detail as t1 LEFT JOIN apollo.baby_detail AS t2 ON t1.uhid=t2.uhid  WHERE t1.spo2 is not null and t1.starttime <t2.dischargeddate and t2.isreadmitted is not true UNION select distinct(t1.uhid) from apollo.device_monitor_detail_dump as t1 LEFT JOIN apollo.baby_detail AS t2 ON t1.uhid=t2.uhid  WHERE t1.spo2 is not null and t1.starttime < t2.dischargeddate and t2.isreadmitted is not true)))) and (dischargestatus = 'Discharge') and isreadmitted is not true and gestationweekbylmp is not null and birthweight is not null;")
+    cols10 = list(map(lambda x: x[0], cur10.description))
+    discharge_cases = pd.DataFrame(cur10.fetchall(),columns=cols10)
+    discharge_cases_uhid = discharge_cases.uhid.unique()
+
+    #Prepare the string of all discharge cases to be given as an input in next query
+    dischargeUhidString = ""
+    counter = 0
+    for uhid in discharge_cases_uhid:
+        if counter == 0:
+            dischargeUhidString = "'" + str(uhid) + "'"
+            counter = counter + 1
+        else :
+            dischargeUhidString = dischargeUhidString + ",'" + uhid + "'"
+
+    #For every death case picking up the discharge case according to the count of spo2 of death patient
+    finalDischargeCases = pd.DataFrame()
+    dischargeCaseDataframe = pd.DataFrame()
+    for count in spo2CountList:
+        cur11 = con.cursor()
+        cur11.execute("((select distinct(uhid) as uhid ,count(*) as sum from apollo.device_monitor_detail where spo2 is not null group by uhid having count(*) > " + str(count) + " and uhid IN ( " + dischargeUhidString +")) UNION  (select distinct(uhid) as uhid ,count(*) as sum from apollo.device_monitor_detail_dump where spo2 is not null group by uhid having  count(*) > " + str(count) + " and uhid IN ( " + dischargeUhidString +"))) order by sum limit 1")
+        cols11 = list(map(lambda x: x[0], cur11.description))
+        device_data = pd.DataFrame(cur11.fetchall(),columns=cols11)
+        print(count , "death count")
+        print(device_data.sum , "discharge count")
+        print(device_data.uhid , "discharge uhid")
+
+        #Fetching the chosen uhid and then append to the discharge List
+        dischargeCaseDataframe = discharge_cases[discharge_cases.uhid == device_data.uhid[0]]
+        finalDischargeCases = finalDischargeCases.append(dischargeCaseDataframe)
+        
+    #Concatenate Discharge and Death cases
+    gs = pd.concat([finalDischargeCases,death_cases])
+
+    print(len(gs))
+
     #print(len(gs))
-    # gs.set_index('uhid',inplace=True)
-    # gs.reset_index(inplace=True)
+    #gs.set_index('uhid',inplace=True)
+    #gs.reset_index(inplace=True)
     dates_detail = gs.copy()
     dates_detail['add_seconds_admission'] = dates_detail['timeofadmission'].apply(second_addition)
     dates_detail['actual_DOA'] = dates_detail.apply(lambda x: actual_birthdate(x['dateofadmission'], x['add_seconds_admission']), axis=1)
