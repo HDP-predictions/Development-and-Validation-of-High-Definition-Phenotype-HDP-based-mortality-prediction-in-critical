@@ -7,7 +7,48 @@ from data_preparation_hdp import *
 from data_visualization import *
 from prediction_using_lstm import *
 from calculate_imputation import *
-from prediction_lrm import *
+#from prediction_lrm import *
+
+def range_finder(x):
+    length = x
+    fractional = (x/15.0) - math.floor(x/15.0)
+    return int(round(fractional*15))
+
+def prepareTrainTestSet(gd):
+    try:
+        print('--------inside make_lstm')
+        final_df = pd.DataFrame(columns=gd.columns)
+        ids = gd.uhid.unique()
+        #print('------inside make lstm---unique uhid count =',len(ids))
+        shuffle(ids)
+        for i in ids:
+            x = gd[gd['uhid']==i]
+            x = x[range_finder(len(x)):len(x)]
+            final_df = final_df.append(x,ignore_index=True)
+        final_df.fillna(-999,inplace=True)
+
+        ids = final_df.uhid.unique()
+        random.shuffle(ids)
+        print(ids)
+
+        #Calculating Death Count
+        death_count = final_df[final_df.dischargestatus == 1]
+
+        #Getting the 70% percent value for training model
+        train_count = int(0.7 * len(ids))
+        print(train_count)
+        #trainingSet is used for training (70%)
+        trainingSet = ids[0:train_count]
+        print(trainingSet)
+        #testingSet is used for testing (30%)
+        testingSet = ids[train_count:]
+        print(testingSet)
+  
+        return trainingSet,testingSet
+    except Exception as e:
+            print('Error in make_lstm method',e)
+            PrintException()
+            return None
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -135,6 +176,8 @@ inter = ['dischargestatus', 'mean_bp',
 cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
 #preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
-preparedData.to_csv('lstm_analysis.csv')
-predictLSTM(preparedData, fixed, cont, inter,hdpPlotdict)
+
+for i in range(5):
+    trainingSet,testingSet = prepareTrainTestSet(preparedData)
+    predictLSTM(preparedData, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet)
 #predictLRM(preparedData)

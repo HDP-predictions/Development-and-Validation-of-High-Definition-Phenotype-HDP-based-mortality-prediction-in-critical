@@ -60,7 +60,7 @@ def range_finder(x):
     fractional = (x/15.0) - math.floor(x/15.0)
     return int(round(fractional*15))
 
-def make_lstm_visualize(gd):
+def make_lstm_visualize(gd,factor,trainingSet,testingSet):
     try:
         print('--------inside make_lstm')
         final_df = pd.DataFrame(columns=gd.columns)
@@ -72,30 +72,14 @@ def make_lstm_visualize(gd):
             x = x[range_finder(len(x)):len(x)]
             final_df = final_df.append(x,ignore_index=True)
         final_df.fillna(-999,inplace=True)
-
-        ids = final_df.uhid.unique()
-        random.shuffle(ids)
-        print(ids)
-
-        #Calculating Death Count
-        death_count = final_df[final_df.dischargestatus == 1]
-
-        #Getting the 70% percent value for training model
-        train_count = int(0.7 * len(ids))
-        print(train_count)
-        #baby_70 is used for training (70%)
-        baby_70 = ids[0:train_count]
-        print(baby_70)
-        #baby_30 is used for testing (30%)
-        baby_30 = ids[train_count:]
-        print(baby_30)
+    
         train = pd.DataFrame()
-        for i in baby_70:
+        for i in trainingSet:
             x = final_df[final_df.uhid == i]
             train = train.append(x,ignore_index = True)
 
         test = pd.DataFrame()
-        for i in baby_30:
+        for i in testingSet:
             x = final_df[final_df.uhid == i]
             test = test.append(x,ignore_index = True)
 
@@ -116,21 +100,25 @@ def make_lstm_visualize(gd):
         dischargeTrain = train[train['dischargestatus']==0]
         print('Train death case  total length =', len(deathTrain))
         print('Train discharge case  total length =', len(dischargeTrain))
+    
         #and test['spo2']!=-999
-        deathTrain = deathTrain[deathTrain['spo2']!=-999]
-        dischargeTrain = dischargeTrain[dischargeTrain['spo2']!=-999]
-        print('Train death case  machine correct length =', len(deathTrain))
-        print('Train discharge case  machine correct length =', len(dischargeTrain))
+        if(factor != "fixed" and factor != "inter" and factor != "fixed_inter"):
+            deathTrain = deathTrain[deathTrain['spo2']!=-999]
+            dischargeTrain = dischargeTrain[dischargeTrain['spo2']!=-999]
+            print('Train death case  machine correct length =', len(deathTrain))
+            print('Train discharge case  machine correct length =', len(dischargeTrain))
 
         deathTest = test[test['dischargestatus']==1]
         dischargeTest = test[test['dischargestatus']==0]
         print('Test death case  total length =', len(deathTest))
         print('Test discharge case  total length =', len(dischargeTest))
-        deathTest = deathTest[deathTest['spo2']!=-999]
-        dischargeTest = dischargeTest[dischargeTest['spo2']!=-999]
 
-        print('Test death case  machine correct length =', len(deathTest))
-        print('Test discharge case  machine correct length =', len(dischargeTest))
+        if(factor != "fixed" and factor != "inter" and factor != "fixed_inter"):
+
+            deathTest = deathTest[deathTest['spo2']!=-999]
+            dischargeTest = dischargeTest[dischargeTest['spo2']!=-999]
+            print('Test death case  machine correct length =', len(deathTest))
+            print('Test discharge case  machine correct length =', len(dischargeTest))
 
         X_test = test.drop('dischargestatus',axis=1)
         X_test = X_test.drop('uhid',axis=1)
@@ -207,17 +195,17 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
         return None
 
 #LSTM model
-def lstm_model(n,gd,hdpPlotdict):
+def lstm_model(n,gd,hdpPlotdict,factor,trainingSet,testingSet):
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weights=True,patience=3)
     auc_roc_inter = []
     val_a = []
     train_a = []
     print('-----------Inside lstm model-------------',n,len(gd))
-    for i in range(5):
+    for i in range(1):
         try:
             print('-----------Iteration No-------------=',i)
             print('-----------gd.uhid-------------=',gd.uhid.unique())
-            Xtrain,Xtest,ytrain1,ytest1,xTestWithUHID = make_lstm_visualize(gd)
+            Xtrain,Xtest,ytrain1,ytest1,xTestWithUHID = make_lstm_visualize(gd,factor,trainingSet,testingSet)
             #Building the LSTM model
             X = Input(shape=(None, n), name='X')
             mX = Masking()(X)
@@ -296,7 +284,7 @@ def convert_date(x):
     x = str(x)
     return pd.to_datetime(x)
 
-def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
+def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
     try:
         print('Inside predictLSTM column count=',gw.columns)
         #defining the early stopping criteria
@@ -314,24 +302,28 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         #reduced 2 for uhid and dischargestatus
         lengthOfContinuous = len(cont) - 2
         
+        #---------------FIXED------------------
         gd = gw[fixed]
         print('total length of gd=',len(gd),'gd count',gd.count())
-        an = lstm_model(lengthOfFixed,gd,hdpPlotdict)
+        an = lstm_model(lengthOfFixed,gd,hdpPlotdict,'fixed',trainingSet,testingSet)
         f_a.append(an[0])
         print('-----AN-------',an)
         print('---------fixed----------',f_a)
         print(mean_confidence_interval(an[0]))
+
+        #---------------INTER------------------
         gd = gw[inter]
-        an = lstm_model(lengthOfIntermittent,gd,lstm_model)
+        an = lstm_model(lengthOfIntermittent,gd,lstm_model,'inter',trainingSet,testingSet)
         i_a.append(an[0])
         print('inter',i_a)
         print(mean_confidence_interval(an[0]))
         
+        #---------------CONT------------------
         gd = gw[cont]
         #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]
         print('---------------AFTER CHECK of SPO2 =-9999--------------')
-        an = lstm_model(lengthOfContinuous,gd,hdpPlotdict)
+        an = lstm_model(lengthOfContinuous,gd,hdpPlotdict,'cont',trainingSet,testingSet)
         c_a.append(an[0])
         print('----------c_a----------->',c_a)
         visualizeDataFrameDataset(gd,'cont')    
@@ -342,14 +334,14 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         gd = gw[cont_inter]
          #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]       
-        an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict)
+        an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'cont_inter',trainingSet,testingSet)
         ci_a.append(an[0])
         print('cont_inter',ci_a)
         print(mean_confidence_interval(an[0]))
         #---------------FIXED+INTER------------------
         fixed_inter = list(set(fixed+inter))
         gd = gw[fixed_inter]
-        an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,hdpPlotdict)
+        an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,hdpPlotdict,'fixed_inter',trainingSet,testingSet)
         fi_a.append(an[0])
         print('fixed_inter',fi_a)
         print(mean_confidence_interval(an[0]))
@@ -358,7 +350,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         gd = gw[cont_fixed]
         #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]        
-        an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,hdpPlotdict)
+        an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,hdpPlotdict,'cont_fixed',trainingSet,testingSet)
         cf_a.append(an[0])
         print('cont_fixed',cf_a)
         print(mean_confidence_interval(an[0]))
@@ -367,7 +359,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict):
         gd = gw[all_cols]
         #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]        
-        an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict)
+        an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'all',trainingSet,testingSet)
         a.append(an[0])
         print('all_cols',a)
         print(mean_confidence_interval(an[0]))
