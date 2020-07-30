@@ -50,23 +50,28 @@ def prepareTrainTestSet(gd):
         #Sorting according the count - Descending
         sort_orders = sorted(dict.items(), key=lambda x: x[1], reverse=True)
 
-        #Creating a bins of 3 that sum to total of 10 bins
+        #Creating a bins of 3 and 4
         bins = []
-        listIndices = []
+        final_bins = []
         counter = 0
+        remainingBins = []
         for i in range(0, len(sort_orders), 3):
             bin = sort_orders[i: i+3]
             bins.append(bin)
-            listIndices.append(counter)
+            if counter >= 6:
+                for j in range(len(bins[counter])):
+                    remainingBins.append(bins[counter][j])
+            else:
+                final_bins.append(bin)
             counter = counter + 1
 
-        #Shuffling indices to neglect one bin to get size - 1 bins for size - 1 death cases. Size = 10
-        shuffle(listIndices)
+        for i in range(0, len(remainingBins), 4):
+            bin = remainingBins[i: i+4]
+            final_bins.append(bin)
 
-
-        #For Each bin take one case for death and other two for discharge
-        for i in range(len(listIndices) - 1):
-            listOfUhids = bins[listIndices[i]]
+        #For Each bin take one case for death and others for discharge
+        for i in range(len(final_bins)):
+            listOfUhids = final_bins[i]
             shuffle(listOfUhids)
 
             for j in range(len(listOfUhids)):
@@ -225,7 +230,7 @@ cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uh
 #preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
 
-for i in range(1):
+for i in range(5):
     trainingSet,testingSet = prepareTrainTestSet(preparedData)
     predictLSTM(preparedData, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet)
 #predictLRM(preparedData)
