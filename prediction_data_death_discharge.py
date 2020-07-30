@@ -7,6 +7,7 @@ from data_preparation_hdp import *
 from data_visualization import *
 from prediction_using_lstm import *
 from calculate_imputation import *
+from sklearn.model_selection import train_test_split
 #from prediction_lrm import *
 
 def range_finder(x):
@@ -31,17 +32,32 @@ def prepareTrainTestSet(gd):
         random.shuffle(ids)
         print(ids)
 
+     
+        #generate a dataframe with random number for age from 0 - 9
+        #set up bins
+        bin = [0,50,70,75,80,85,95,100]
+        #use pd.cut function can attribute the values into its specific bins
+        category = pd.cut(final_df.spo2,bin)
+        category = category.to_frame()
+        category.columns = ['range']
+        #concatenate age and its bin
+        df_new = pd.concat([final_df,category],axis = 1)
+
+        df2 = final_df[final_df['spo2'].isin(final_df['spo2'].value_counts()[final_df['spo2'].value_counts()>2].index)]
+
+        trainingSet,testingSet = train_test_split(df2,test_size = 0.3,stratify = df2['spo2'])
+
         #Calculating Death Count
-        death_count = final_df[final_df.dischargestatus == 1]
+        #death_count = final_df[final_df.dischargestatus == 1]
 
         #Getting the 70% percent value for training model
-        train_count = int(0.7 * len(ids))
-        print(train_count)
+        #train_count = int(0.7 * len(ids))
+        #print(train_count)
         #trainingSet is used for training (70%)
-        trainingSet = ids[0:train_count]
+        #trainingSet = ids[0:train_count]
         print(trainingSet)
         #testingSet is used for testing (30%)
-        testingSet = ids[train_count:]
+        #testingSet = ids[train_count:]
         print(testingSet)
   
         return trainingSet,testingSet
@@ -108,11 +124,11 @@ con = psycopg2.connect (user = 'postgres',
 #The variable would be True if discharge cases are retrieved on the basis of birth weight and gestation
 enablingRandomize = False
 #generate new set of death and discharge cases
-balanceDS = balanceDataset(con,enablingRandomize)
+#balanceDS = balanceDataset(con,enablingRandomize)
 #we can also load previously generated set whose data preparation is already done for faster execution
 """
 """
-#balanceDS = pd.read_csv('death_discharge_set.csv')
+balanceDS = pd.read_csv('death_discharge_set.csv')
 print('Length of balanced dataset',len(balanceDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
@@ -177,7 +193,7 @@ cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uh
 #preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
 
-for i in range(5):
+for i in range(1):
     trainingSet,testingSet = prepareTrainTestSet(preparedData)
     predictLSTM(preparedData, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet)
 #predictLRM(preparedData)

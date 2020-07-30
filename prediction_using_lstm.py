@@ -205,6 +205,9 @@ def lstm_model(n,gd,hdpPlotdict,factor,trainingSet,testingSet):
         try:
             print('-----------Iteration No-------------=',i)
             print('-----------gd.uhid-------------=',gd.uhid.unique())
+            print('-----------training.uhid-------------=',len(trainingSet))
+            print('-----------testing.uhid-------------=',len(testingSet))
+
             Xtrain,Xtest,ytrain1,ytest1,xTestWithUHID = make_lstm_visualize(gd,factor,trainingSet,testingSet)
             #Building the LSTM model
             X = Input(shape=(None, n), name='X')
