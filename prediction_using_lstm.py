@@ -74,12 +74,12 @@ def make_lstm_visualize(gd,factor,trainingSet,testingSet):
         final_df.fillna(-999,inplace=True)
     
         train = pd.DataFrame()
-        for i in trainingSet:
+        for i in trainingSet.uhid.unique():
             x = final_df[final_df.uhid == i]
             train = train.append(x,ignore_index = True)
 
         test = pd.DataFrame()
-        for i in testingSet:
+        for i in testingSet.uhid.unique():
             x = final_df[final_df.uhid == i]
             test = test.append(x,ignore_index = True)
 

@@ -8,6 +8,7 @@ from data_visualization import *
 from prediction_using_lstm import *
 from calculate_imputation import *
 from sklearn.model_selection import train_test_split
+from random import shuffle
 #from prediction_lrm import *
 
 def range_finder(x):
@@ -26,26 +27,57 @@ def prepareTrainTestSet(gd):
             x = gd[gd['uhid']==i]
             x = x[range_finder(len(x)):len(x)]
             final_df = final_df.append(x,ignore_index=True)
+
         final_df.fillna(-999,inplace=True)
+        #Copy the original file before applying the check of spo2
+        original_df = final_df.copy()
 
-        ids = final_df.uhid.unique()
-        random.shuffle(ids)
-        print(ids)
+        final_df = final_df[final_df["spo2"] != -999]
 
-     
-        #generate a dataframe with random number for age from 0 - 9
-        #set up bins
-        bin = [0,50,70,75,80,85,95,100]
-        #use pd.cut function can attribute the values into its specific bins
-        category = pd.cut(final_df.spo2,bin)
-        category = category.to_frame()
-        category.columns = ['range']
-        #concatenate age and its bin
-        df_new = pd.concat([final_df,category],axis = 1)
+        #Calculating the count of every UHID
+        symbols = final_df.groupby('uhid')
 
-        df2 = final_df[final_df['spo2'].isin(final_df['spo2'].value_counts()[final_df['spo2'].value_counts()>2].index)]
+        trainingSet = pd.DataFrame(columns=gd.columns)
+        testingSet = pd.DataFrame(columns=gd.columns)
+      
+        #Preparing a dictionary to store uhid and its count
+        dict = {}
+        for symbol, group in symbols:
+            print(symbol)
+            print(len(group))
+            dict[symbol] = len(group)
 
-        trainingSet,testingSet = train_test_split(df2,test_size = 0.3,stratify = df2['spo2'])
+        #Sorting according the count - Descending
+        sort_orders = sorted(dict.items(), key=lambda x: x[1], reverse=True)
+
+        #Creating a bins of 3 that sum to total of 10 bins
+        bins = []
+        listIndices = []
+        counter = 0
+        for i in range(0, len(sort_orders), 3):
+            bin = sort_orders[i: i+3]
+            bins.append(bin)
+            listIndices.append(counter)
+            counter = counter + 1
+
+        #Shuffling indices to neglect one bin to get size - 1 bins for size - 1 death cases. Size = 10
+        shuffle(listIndices)
+
+
+        #For Each bin take one case for death and other two for discharge
+        for i in range(len(listIndices) - 1):
+            listOfUhids = bins[listIndices[i]]
+            shuffle(listOfUhids)
+
+            for j in range(len(listOfUhids)):
+                if j == 0:
+                    #death
+                    test = original_df[original_df.uhid == listOfUhids[j][0]]
+                    testingSet = testingSet.append(test)
+                else:
+                    #discharge
+                    train = original_df[original_df.uhid == listOfUhids[j][0]]
+                    trainingSet = trainingSet.append(train)
 
         #Calculating Death Count
         #death_count = final_df[final_df.dischargestatus == 1]
@@ -55,10 +87,10 @@ def prepareTrainTestSet(gd):
         #print(train_count)
         #trainingSet is used for training (70%)
         #trainingSet = ids[0:train_count]
-        print(trainingSet)
+        print(trainingSet.uhid.unique(), len(trainingSet))
         #testingSet is used for testing (30%)
         #testingSet = ids[train_count:]
-        print(testingSet)
+        print(testingSet.uhid.unique(), len(testingSet))
   
         return trainingSet,testingSet
     except Exception as e:
