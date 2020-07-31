@@ -9,7 +9,86 @@ from prediction_using_lstm import *
 from calculate_imputation import *
 from sklearn.model_selection import train_test_split
 from random import shuffle
+from math import *
 #from prediction_lrm import *
+
+def splittingSets(dfCase,final_df):
+
+    #Calculating the count of every UHID
+    symbols = dfCase.groupby('uhid')
+
+    trainingSetFrame = pd.DataFrame(columns=final_df.columns)
+    testingSetFrame = pd.DataFrame(columns=final_df.columns)
+
+    #Preparing a dictionary to store uhid and its count
+    dict = {}
+    listValues = []
+    for symbol, group in symbols:
+        print(symbol)
+        print(len(group))
+        dict[symbol] = len(group)
+        listValues.append(len(group))
+
+    #Sorting according the count - Descending
+    sort_orders = sorted(dict.items(), key=lambda x: x[1], reverse=True)
+
+    #Dividing the count into centiles
+    firstQuartileValue = np.quantile(listValues, .75)
+    secondQuartileValue = np.quantile(listValues, .50)
+    thirdQuartileValue = np.quantile(listValues, .25)
+
+    firstQuartile = []
+    secondQuartile = []
+    thirdQuartile = []
+    fourthQuartile = []
+
+    #According to centiles the patients are divided into 4 categories
+    for i in range(0, len(sort_orders)):
+        if(sort_orders[i][1] >= firstQuartileValue):
+            firstQuartile.append(sort_orders[i][0])
+        elif(sort_orders[i][1] < firstQuartileValue and sort_orders[i][1] >= secondQuartileValue):
+            secondQuartile.append(sort_orders[i][0])
+        elif(sort_orders[i][1] < secondQuartileValue and sort_orders[i][1] >= thirdQuartileValue):
+            thirdQuartile.append(sort_orders[i][0])
+        else:
+            fourthQuartile.append(sort_orders[i][0])
+
+    #Function used to split the data set into training(70%) and testing(30%) from each category
+    train,test = splittingQuartiles(firstQuartile,final_df)
+    trainingSetFrame = trainingSetFrame.append(train)
+    testingSetFrame = testingSetFrame.append(test)
+
+    train,test = splittingQuartiles(secondQuartile,final_df)
+    trainingSetFrame = trainingSetFrame.append(train)
+    testingSetFrame = testingSetFrame.append(test)
+
+    train,test = splittingQuartiles(thirdQuartile,final_df)
+    trainingSetFrame = trainingSetFrame.append(train)
+    testingSetFrame = testingSetFrame.append(test)
+
+    train,test = splittingQuartiles(fourthQuartile,final_df)
+    trainingSetFrame = trainingSetFrame.append(train)
+    testingSetFrame = testingSetFrame.append(test)
+
+    return trainingSetFrame, testingSetFrame
+
+def splittingQuartiles(quartileList,original_df):
+    trainingSetDummy = pd.DataFrame(columns=original_df.columns)
+    testingSetDummy = pd.DataFrame(columns=original_df.columns)
+    shuffle(quartileList)
+    print(len(quartileList))
+    trainingLength = round(len(quartileList) * 0.7)
+    print(trainingLength, "lengthOfTraining")
+    for i in range(len(quartileList)):
+        if i < trainingLength:
+            print(i)
+            train = original_df[original_df.uhid == quartileList[i]]
+            trainingSetDummy = trainingSetDummy.append(train)
+        else:
+            test = original_df[original_df.uhid == quartileList[i]]
+            testingSetDummy = testingSetDummy.append(test)
+    
+    return trainingSetDummy,testingSetDummy
 
 def range_finder(x):
     length = x
@@ -32,57 +111,24 @@ def prepareTrainTestSet(gd):
         #Copy the original file before applying the check of spo2
         original_df = final_df.copy()
 
-        final_df = final_df[final_df["spo2"] != -999]
-
-        #Calculating the count of every UHID
-        symbols = final_df.groupby('uhid')
-
         trainingSet = pd.DataFrame(columns=gd.columns)
         testingSet = pd.DataFrame(columns=gd.columns)
-      
-        #Preparing a dictionary to store uhid and its count
-        dict = {}
-        for symbol, group in symbols:
-            print(symbol)
-            print(len(group))
-            dict[symbol] = len(group)
 
-        #Sorting according the count - Descending
-        sort_orders = sorted(dict.items(), key=lambda x: x[1], reverse=True)
+        final_df = final_df[final_df["spo2"] != -999]
+        
+        #Splitting the Data from into discharge and death
+        deathCases = final_df[final_df.dischargestatus == 1]
+        dischargeCases = final_df[final_df.dischargestatus == 0]
 
-        #Creating a bins of 3 and 4
-        bins = []
-        final_bins = []
-        counter = 0
-        remainingBins = []
-        for i in range(0, len(sort_orders), 3):
-            bin = sort_orders[i: i+3]
-            bins.append(bin)
-            if counter >= 6:
-                for j in range(len(bins[counter])):
-                    remainingBins.append(bins[counter][j])
-            else:
-                final_bins.append(bin)
-            counter = counter + 1
+        #Firstly splitting 15 death cases to train and test
+        trainDeath, testDeath = splittingSets(deathCases,final_df)
+        trainingSet = trainingSet.append(trainDeath)
+        testingSet = testingSet.append(testDeath)
 
-        for i in range(0, len(remainingBins), 4):
-            bin = remainingBins[i: i+4]
-            final_bins.append(bin)
-
-        #For Each bin take one case for death and others for discharge
-        for i in range(len(final_bins)):
-            listOfUhids = final_bins[i]
-            shuffle(listOfUhids)
-
-            for j in range(len(listOfUhids)):
-                if j == 0:
-                    #death
-                    test = original_df[original_df.uhid == listOfUhids[j][0]]
-                    testingSet = testingSet.append(test)
-                else:
-                    #discharge
-                    train = original_df[original_df.uhid == listOfUhids[j][0]]
-                    trainingSet = trainingSet.append(train)
+        #Secondly splitting 15 discharge cases to train and test
+        trainDeath, testDischarge = splittingSets(dischargeCases,final_df)
+        trainingSet = trainingSet.append(trainDeath)
+        testingSet = testingSet.append(testDischarge)
 
         #Calculating Death Count
         #death_count = final_df[final_df.dischargestatus == 1]
@@ -92,10 +138,22 @@ def prepareTrainTestSet(gd):
         #print(train_count)
         #trainingSet is used for training (70%)
         #trainingSet = ids[0:train_count]
+        print('--------------------TRAINING SET---------------------')
         print(trainingSet.uhid.unique(), len(trainingSet))
+        deathTraining = trainingSet[trainingSet.dischargestatus == 1]
+        print("Death cases" , deathTraining.uhid.unique())
+
+        dischargeTraining = trainingSet[trainingSet.dischargestatus == 0]
+        print("Discharge cases" , dischargeTraining.uhid.unique())
         #testingSet is used for testing (30%)
         #testingSet = ids[train_count:]
+        print('--------------------TESTING SET----------------------')
         print(testingSet.uhid.unique(), len(testingSet))
+        deathTesting = testingSet[testingSet.dischargestatus == 1]
+        print("Death cases" , deathTesting.uhid.unique())
+
+        dischargeTesting = testingSet[testingSet.dischargestatus == 0]
+        print("Discharge cases" , dischargeTesting.uhid.unique())
   
         return trainingSet,testingSet
     except Exception as e:
