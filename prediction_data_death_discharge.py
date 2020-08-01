@@ -32,6 +32,8 @@ def splittingSets(dfCase,final_df):
     #Sorting according the count - Descending
     sort_orders = sorted(dict.items(), key=lambda x: x[1], reverse=True)
 
+    print(sort_orders)
+
     #Dividing the count into centiles
     firstQuartileValue = np.quantile(listValues, .75)
     secondQuartileValue = np.quantile(listValues, .50)
@@ -70,24 +72,21 @@ def splittingSets(dfCase,final_df):
     trainingSetFrame = trainingSetFrame.append(train)
     testingSetFrame = testingSetFrame.append(test)
 
-    return trainingSetFrame, testingSetFrame
+    return trainingSetFrame, testingSetFrame, sort_orders
 
 def splittingQuartiles(quartileList,original_df):
     trainingSetDummy = pd.DataFrame(columns=original_df.columns)
     testingSetDummy = pd.DataFrame(columns=original_df.columns)
     shuffle(quartileList)
-    print(len(quartileList))
     trainingLength = round(len(quartileList) * 0.7)
-    print(trainingLength, "lengthOfTraining")
     for i in range(len(quartileList)):
         if i < trainingLength:
-            print(i)
             train = original_df[original_df.uhid == quartileList[i]]
             trainingSetDummy = trainingSetDummy.append(train)
         else:
             test = original_df[original_df.uhid == quartileList[i]]
             testingSetDummy = testingSetDummy.append(test)
-    
+
     return trainingSetDummy,testingSetDummy
 
 def range_finder(x):
@@ -120,15 +119,65 @@ def prepareTrainTestSet(gd):
         deathCases = final_df[final_df.dischargestatus == 1]
         dischargeCases = final_df[final_df.dischargestatus == 0]
 
+        print('Splitting of Death cases start')
         #Firstly splitting 15 death cases to train and test
-        trainDeath, testDeath = splittingSets(deathCases,final_df)
-        trainingSet = trainingSet.append(trainDeath)
-        testingSet = testingSet.append(testDeath)
-
+        trainDeath, testDeath, sort_orders_death = splittingSets(deathCases,final_df)
+        print('Splitting of Death cases end')
+        print('Splitting of Discharge cases start')
         #Secondly splitting 15 discharge cases to train and test
-        trainDeath, testDischarge = splittingSets(dischargeCases,final_df)
-        trainingSet = trainingSet.append(trainDeath)
-        testingSet = testingSet.append(testDischarge)
+        trainDischarge, testDischarge, sort_orders_discharge = splittingSets(dischargeCases,final_df)
+        print('Splitting of Discharge cases end')
+
+        print('--------------------TRAINING SET BEFORE BALANCE---------------------')
+        print("Death cases" , trainDeath.uhid.unique(), len(trainDeath))
+        print("Discharge cases" , trainDischarge.uhid.unique(),len(trainDischarge))
+        #testingSet is used for testing (30%)
+        #testingSet = ids[train_count:]
+        print('--------------------TESTING SET BEFORE BALANCE----------------------')
+        print("Death cases" , testDeath.uhid.unique(),len(testDeath))
+        print("Discharge cases" , testDischarge.uhid.unique(),len(testDischarge))
+
+        #Balancing the data of Discharge and Death. If discharge count is more 
+        #then prune extra count from death case and vice-versa
+        for i in range(0, len(sort_orders_discharge)):
+
+            countDeath = sort_orders_death[i][1]
+            countDischarge = sort_orders_discharge[i][1]
+            if(countDeath > countDischarge):
+                
+                train = trainDeath[trainDeath.uhid == sort_orders_death[i][0]]
+                if(len(train) > 0):
+                    trainFinal = train[:(countDischarge)]
+                    trainingSet = trainingSet.append(trainFinal)
+                else:
+                    test = testDeath[testDeath.uhid == sort_orders_death[i][0]]
+                    testFinal = test[:(countDischarge)]
+                    testingSet = testingSet.append(testFinal)
+
+                train = trainDischarge[trainDischarge.uhid == sort_orders_discharge[i][0]]
+                if(len(train) > 0):
+                    trainingSet = trainingSet.append(train)
+                else:
+                    
+                    test = testDischarge[testDischarge.uhid == sort_orders_discharge[i][0]] 
+                    testingSet = testingSet.append(test)
+            else:
+                train = trainDischarge[trainDischarge.uhid == sort_orders_discharge[i][0]]
+                if(len(train) > 0):
+                    trainFinal = train[:(countDeath)]
+                    trainingSet = trainingSet.append(trainFinal)
+                else:
+                    test = testDischarge[testDischarge.uhid == sort_orders_discharge[i][0]]
+                    testFinal = test[:(countDeath)]
+                    testingSet = testingSet.append(testFinal)
+
+                train = trainDeath[trainDeath.uhid == sort_orders_death[i][0]]
+                if(len(train) > 0):
+                    trainingSet = trainingSet.append(train)
+                else:
+                    test = testDeath[testDeath.uhid == sort_orders_death[i][0]]
+                    testingSet = testingSet.append(test)
+           
 
         #Calculating Death Count
         #death_count = final_df[final_df.dischargestatus == 1]
@@ -138,22 +187,22 @@ def prepareTrainTestSet(gd):
         #print(train_count)
         #trainingSet is used for training (70%)
         #trainingSet = ids[0:train_count]
-        print('--------------------TRAINING SET---------------------')
+        print('--------------------TRAINING SET AFTER BALANCE---------------------')
         print(trainingSet.uhid.unique(), len(trainingSet))
         deathTraining = trainingSet[trainingSet.dischargestatus == 1]
-        print("Death cases" , deathTraining.uhid.unique())
+        print("Death cases" , deathTraining.uhid.unique(), len(deathTraining))
 
         dischargeTraining = trainingSet[trainingSet.dischargestatus == 0]
-        print("Discharge cases" , dischargeTraining.uhid.unique())
+        print("Discharge cases" , dischargeTraining.uhid.unique(), len(dischargeTraining))
         #testingSet is used for testing (30%)
         #testingSet = ids[train_count:]
-        print('--------------------TESTING SET----------------------')
+        print('--------------------TESTING SET AFTER BALANCE----------------------')
         print(testingSet.uhid.unique(), len(testingSet))
         deathTesting = testingSet[testingSet.dischargestatus == 1]
-        print("Death cases" , deathTesting.uhid.unique())
+        print("Death cases" , deathTesting.uhid.unique(), len(deathTesting))
 
         dischargeTesting = testingSet[testingSet.dischargestatus == 0]
-        print("Discharge cases" , dischargeTesting.uhid.unique())
+        print("Discharge cases" , dischargeTesting.uhid.unique(), len(dischargeTesting))
   
         return trainingSet,testingSet
     except Exception as e:

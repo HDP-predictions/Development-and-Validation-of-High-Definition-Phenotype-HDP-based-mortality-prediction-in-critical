@@ -63,25 +63,26 @@ def range_finder(x):
 def make_lstm_visualize(gd,factor,trainingSet,testingSet):
     try:
         print('--------inside make_lstm')
-        final_df = pd.DataFrame(columns=gd.columns)
-        ids = gd.uhid.unique()
-        #print('------inside make lstm---unique uhid count =',len(ids))
+        
+        train = pd.DataFrame(columns=gd.columns)
+        ids = trainingSet.uhid.unique()
         shuffle(ids)
         for i in ids:
-            x = gd[gd['uhid']==i]
+            x = trainingSet[trainingSet['uhid']==i]
             x = x[range_finder(len(x)):len(x)]
-            final_df = final_df.append(x,ignore_index=True)
-        final_df.fillna(-999,inplace=True)
+            train = train.append(x,ignore_index=True)
+        train.fillna(-999,inplace=True)
     
-        train = pd.DataFrame()
-        for i in trainingSet.uhid.unique():
-            x = final_df[final_df.uhid == i]
-            train = train.append(x,ignore_index = True)
 
-        test = pd.DataFrame()
-        for i in testingSet.uhid.unique():
-            x = final_df[final_df.uhid == i]
-            test = test.append(x,ignore_index = True)
+        test = pd.DataFrame(columns=gd.columns)
+        ids = testingSet.uhid.unique()
+        shuffle(ids)
+        #Training
+        for i in ids:
+            x = testingSet[testingSet['uhid']==i]
+            x = x[range_finder(len(x)):len(x)]
+            test = test.append(x,ignore_index=True)
+        test.fillna(-999,inplace=True)
 
         y_train = train['dischargestatus']
         X_train = train.drop('dischargestatus',axis=1)
@@ -201,7 +202,7 @@ def lstm_model(n,gd,hdpPlotdict,factor,trainingSet,testingSet):
     val_a = []
     train_a = []
     print('-----------Inside lstm model-------------',n,len(gd))
-    for i in range(1):
+    for i in range(5):
         try:
             print('-----------Iteration No-------------=',i)
             print('-----------gd.uhid-------------=',gd.uhid.unique())
@@ -307,8 +308,10 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         
         #---------------FIXED------------------
         gd = gw[fixed]
+        trainingSetgd = trainingSet[fixed]
+        testingSetgd = testingSet[fixed]
         print('total length of gd=',len(gd),'gd count',gd.count())
-        an = lstm_model(lengthOfFixed,gd,hdpPlotdict,'fixed',trainingSet,testingSet)
+        an = lstm_model(lengthOfFixed,gd,hdpPlotdict,'fixed',trainingSetgd,testingSetgd)
         f_a.append(an[0])
         print('-----AN-------',an)
         print('---------fixed----------',f_a)
@@ -316,17 +319,21 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
 
         #---------------INTER------------------
         gd = gw[inter]
-        an = lstm_model(lengthOfIntermittent,gd,lstm_model,'inter',trainingSet,testingSet)
+        trainingSetgd = trainingSet[inter]
+        testingSetgd = testingSet[inter]
+        an = lstm_model(lengthOfIntermittent,gd,lstm_model,'inter',trainingSetgd,testingSetgd)
         i_a.append(an[0])
         print('inter',i_a)
         print(mean_confidence_interval(an[0]))
         
         #---------------CONT------------------
         gd = gw[cont]
+        trainingSetgd = trainingSet[cont]
+        testingSetgd = testingSet[cont]
         #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]
         print('---------------AFTER CHECK of SPO2 =-9999--------------')
-        an = lstm_model(lengthOfContinuous,gd,hdpPlotdict,'cont',trainingSet,testingSet)
+        an = lstm_model(lengthOfContinuous,gd,hdpPlotdict,'cont',trainingSetgd,testingSetgd)
         c_a.append(an[0])
         print('----------c_a----------->',c_a)
         visualizeDataFrameDataset(gd,'cont')    
@@ -335,34 +342,42 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         #---------------CONT+INTER------------------
         cont_inter = list(set(cont+inter))
         gd = gw[cont_inter]
+        trainingSetgd = trainingSet[cont_inter]
+        testingSetgd = testingSet[cont_inter]
          #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]       
-        an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'cont_inter',trainingSet,testingSet)
+        an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'cont_inter',trainingSetgd,testingSetgd)
         ci_a.append(an[0])
         print('cont_inter',ci_a)
         print(mean_confidence_interval(an[0]))
         #---------------FIXED+INTER------------------
         fixed_inter = list(set(fixed+inter))
         gd = gw[fixed_inter]
-        an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,hdpPlotdict,'fixed_inter',trainingSet,testingSet)
+        trainingSetgd = trainingSet[fixed_inter]
+        testingSetgd = testingSet[fixed_inter]
+        an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,hdpPlotdict,'fixed_inter',trainingSetgd,testingSetgd)
         fi_a.append(an[0])
         print('fixed_inter',fi_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED------------------
         cont_fixed = list(set(cont+fixed))
         gd = gw[cont_fixed]
+        trainingSetgd = trainingSet[cont_fixed]
+        testingSetgd = testingSet[cont_fixed]
         #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]        
-        an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,hdpPlotdict,'cont_fixed',trainingSet,testingSet)
+        an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,hdpPlotdict,'cont_fixed',trainingSetgd,testingSetgd)
         cf_a.append(an[0])
         print('cont_fixed',cf_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED+INTER------------------
         all_cols = list(set(cont+inter+fixed))
         gd = gw[all_cols]
+        trainingSetgd = trainingSet[all_cols]
+        testingSetgd = testingSet[all_cols]
         #this will remove all indexes where continuous data is not present
         gd = gd[gd["spo2"] != -999]        
-        an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'all',trainingSet,testingSet)
+        an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'all',trainingSetgd,testingSetgd)
         a.append(an[0])
         print('all_cols',a)
         print(mean_confidence_interval(an[0]))
