@@ -115,25 +115,25 @@ def prepareTrainTestSet(gd):
 
         final_df = final_df[final_df["spo2"] != -999]
         
-        #Splitting the Data from into discharge and death
-        deathCases = final_df[final_df.dischargestatus == 1]
-        dischargeCases = final_df[final_df.dischargestatus == 0]
+        # #Splitting the Data from into discharge and death
+        # deathCases = final_df[final_df.dischargestatus == 1]
+        # dischargeCases = final_df[final_df.dischargestatus == 0]
 
-        print('Splitting of Death cases start')
-        #Firstly splitting 15 death cases to train and test
-        trainDeath, testDeath, sort_orders_death = splittingSets(deathCases,final_df)
-        print('Splitting of Death cases end')
-        trainingSet = trainingSet.append(trainDeath)
-        testingSet = testingSet.append(testDeath)
+        # print('Splitting of Death cases start')
+        # #Firstly splitting 15 death cases to train and test
+        # trainDeath, testDeath, sort_orders_death = splittingSets(deathCases,final_df)
+        # print('Splitting of Death cases end')
+        # trainingSet = trainingSet.append(trainDeath)
+        # testingSet = testingSet.append(testDeath)
 
-        print('Splitting of Discharge cases start')
+        # print('Splitting of Discharge cases start')
         
-        #Secondly splitting 15 discharge cases to train and test
-        trainDischarge, testDischarge, sort_orders_discharge = splittingSets(dischargeCases,final_df)
+        # #Secondly splitting 15 discharge cases to train and test
+        # trainDischarge, testDischarge, sort_orders_discharge = splittingSets(dischargeCases,final_df)
         
-        print('Splitting of Discharge cases end')
-        trainingSet = trainingSet.append(trainDischarge)
-        testingSet = testingSet.append(testDischarge)
+        # print('Splitting of Discharge cases end')
+        # trainingSet = trainingSet.append(trainDischarge)
+        # testingSet = testingSet.append(testDischarge)
 
         #To be non-commented when uhids are hardcoded for training and testing list
         trainingList = ['RSHI.0000015211', 'RSHI.0000014720' ,'RSHI.0000019707' ,'RSHI.0000017471',
@@ -146,6 +146,9 @@ def prepareTrainTestSet(gd):
 
         trainDeath = pd.DataFrame(columns=gd.columns)
         trainDischarge = pd.DataFrame(columns=gd.columns)
+
+        trainingSet = pd.DataFrame(columns=gd.columns)
+        testingSet = pd.DataFrame(columns=gd.columns)
 
         for uhid in trainingList:
             train = final_df[final_df.uhid == uhid]
