@@ -135,8 +135,47 @@ def prepareTrainTestSet(gd):
         trainingSet = trainingSet.append(trainDischarge)
         testingSet = testingSet.append(testDischarge)
 
+        #To be non-commented when uhids are hardcoded for training and testing list
+        trainingList = ['RSHI.0000015211', 'RSHI.0000014720' ,'RSHI.0000019707' ,'RSHI.0000017471',
+        'RSHI.0000015178', 'RSHI.0000021953', 'RNEH.0000008375' ,'RNEH.0000011301',
+        'RSHI.0000017472', 'RSHI.0000016373', 'RNEH.0000013713','RSHI.0000013288', 'RNEH.0000014660' ,'RSHI.0000016564', 'RSHI.0000018152',
+        'RSHI.0000018153', 'RSHI.0000017641', 'RSHI.0000021004' ,'RSHI.0000020345',
+        'RSHI.0000023179', 'RNEH.0000010694' ,'RSHI.0000019900']
+
+        testingList = ['RSHI.0000023451', 'RNEH.0000012581', 'RSHI.0000012088' ,'RSHI.0000015691','RNEH.0000013015', 'RSHI.0000012087' ,'RSHI.0000014218', 'RKON.0000014915'] 
+
+        trainDeath = pd.DataFrame(columns=gd.columns)
+        trainDischarge = pd.DataFrame(columns=gd.columns)
+
+        for uhid in trainingList:
+            train = final_df[final_df.uhid == uhid]
+            trainingSet = trainingSet.append(train)
+
+            dischargestatus = train.dischargestatus.unique()[0]
+
+            if dischargestatus == 0:
+                trainDischarge = trainDischarge.append(train)
+            else:
+                trainDeath = trainDeath.append(train)
 
 
+        testDeath = pd.DataFrame(columns=gd.columns)
+        testDischarge = pd.DataFrame(columns=gd.columns)
+
+        for uhid in testingList:
+            test = final_df[final_df.uhid == uhid]
+            testingSet = testingSet.append(test)
+
+            dischargestatus = test.dischargestatus.unique()[0]
+            if dischargestatus == 0:
+                testDischarge = testDischarge.append(test)
+            else:
+                testDeath = testDeath.append(test)
+
+        
+        
+        #Till here the code can be non-commented when hardcoded for training and testing list
+        
         print('--------------------TRAINING SET BEFORE BALANCE---------------------')
         print("Death cases" , trainDeath.uhid.unique(), len(trainDeath))
         print("Discharge cases" , trainDischarge.uhid.unique(),len(trainDischarge))
@@ -148,8 +187,8 @@ def prepareTrainTestSet(gd):
 
         #Balancing the data of Discharge and Death. If discharge count is more 
         #then prune extra count from death case and vice-versa
-        trainingSetDischarge = trainingSet[trainingSet.dischargestatus == 1]
-        trainingSetDeath = trainingSet[trainingSet.dischargestatus == 0]
+        trainingSetDischarge = trainingSet[trainingSet.dischargestatus == 0]
+        trainingSetDeath = trainingSet[trainingSet.dischargestatus == 1]
     
         #Sorting the training of death cases and discharge cases in descending order to balance the set
         sort_orders_training_death = trainingSetDeath.groupby('uhid')
@@ -190,8 +229,8 @@ def prepareTrainTestSet(gd):
                 trainingSet = trainingSet.append(train)
                 
 
-        testingSetDischarge = testingSet[testingSet.dischargestatus == 1]
-        testingSetDeath = testingSet[testingSet.dischargestatus == 0]
+        testingSetDischarge = testingSet[testingSet.dischargestatus == 0]
+        testingSetDeath = testingSet[testingSet.dischargestatus == 1]
 
         #Sorting the testing of death cases and discharge cases in descending order to balance the set
         sort_orders_testing_death = testingSetDeath.groupby('uhid')
@@ -389,7 +428,7 @@ cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uh
 #preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
 
-for i in range(5):
+for i in range(1):
     trainingSet,testingSet = prepareTrainTestSet(preparedData)
     predictLSTM(preparedData, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet)
 #predictLRM(preparedData)
