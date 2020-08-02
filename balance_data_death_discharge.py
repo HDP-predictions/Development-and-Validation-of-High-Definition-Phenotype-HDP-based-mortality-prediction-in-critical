@@ -213,7 +213,7 @@ def randomize(dis,dea):
     return df
 
 
-def balanceDataset(con, flag):
+def fetchingDischargeDeathset(con, flag):
     cur  = con.cursor()
     #print("connected to database")
 

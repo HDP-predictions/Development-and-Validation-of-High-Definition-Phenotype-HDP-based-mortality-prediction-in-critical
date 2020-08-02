@@ -320,18 +320,18 @@ con = psycopg2.connect (user = 'postgres',
 #The variable would be True if discharge cases are retrieved on the basis of birth weight and gestation
 enablingRandomize = False
 #generate new set of death and discharge cases
-#balanceDS = balanceDataset(con,enablingRandomize)
+#finalSetDS = fetchingDischargeDeathset(con,enablingRandomize)
 #we can also load previously generated set whose data preparation is already done for faster execution
 """
 """
-balanceDS = pd.read_csv('death_discharge_set.csv')
-print('Length of balanced dataset',len(balanceDS))
+finalSetDS = pd.read_csv('death_discharge_set.csv')
+print('Length of balanced dataset',len(finalSetDS))
 print("---------Preparing Data----------")
 preparedData = pd.DataFrame()
 visualFlag = False
 i = 1
 hdpPlotdict = {}
-for row in balanceDS.itertuples():
+for row in finalSetDS.itertuples():
     try:
         print(i,'---->',getattr(row, 'uhid'), getattr(row, 'dischargestatus')) 
         i=i+1
