@@ -123,10 +123,19 @@ def prepareTrainTestSet(gd):
         #Firstly splitting 15 death cases to train and test
         trainDeath, testDeath, sort_orders_death = splittingSets(deathCases,final_df)
         print('Splitting of Death cases end')
+        trainingSet = trainingSet.append(trainDeath)
+        testingSet = testingSet.append(testDeath)
+
         print('Splitting of Discharge cases start')
+        
         #Secondly splitting 15 discharge cases to train and test
         trainDischarge, testDischarge, sort_orders_discharge = splittingSets(dischargeCases,final_df)
+        
         print('Splitting of Discharge cases end')
+        trainingSet = trainingSet.append(trainDischarge)
+        testingSet = testingSet.append(testDischarge)
+
+
 
         print('--------------------TRAINING SET BEFORE BALANCE---------------------')
         print("Death cases" , trainDeath.uhid.unique(), len(trainDeath))
@@ -139,45 +148,88 @@ def prepareTrainTestSet(gd):
 
         #Balancing the data of Discharge and Death. If discharge count is more 
         #then prune extra count from death case and vice-versa
-        for i in range(0, len(sort_orders_discharge)):
+        trainingSetDischarge = trainingSet[trainingSet.dischargestatus == 1]
+        trainingSetDeath = trainingSet[trainingSet.dischargestatus == 0]
+    
+        #Sorting the training of death cases and discharge cases in descending order to balance the set
+        sort_orders_training_death = trainingSetDeath.groupby('uhid')
+        sort_orders_training_discharge = trainingSetDischarge.groupby('uhid')
 
-            countDeath = sort_orders_death[i][1]
-            countDischarge = sort_orders_discharge[i][1]
+        symbols = trainingSetDischarge.groupby('uhid')
+        dict = {}
+        for symbol, group in symbols:
+            dict[symbol] = len(group)
+        sort_orders_training_discharge = sorted(dict.items(), key=lambda x: x[1], reverse=True)
+
+        symbols = trainingSetDeath.groupby('uhid')
+        dict = {}
+        for symbol, group in symbols:
+            dict[symbol] = len(group)
+        sort_orders_training_death = sorted(dict.items(), key=lambda x: x[1], reverse=True)
+        
+        trainingSet = pd.DataFrame(columns=gd.columns)
+        for i in range(0, len(sort_orders_training_discharge)):
+
+            countDeath = sort_orders_training_death[i][1]
+            countDischarge = sort_orders_training_discharge[i][1]
             if(countDeath > countDischarge):
                 
-                train = trainDeath[trainDeath.uhid == sort_orders_death[i][0]]
-                if(len(train) > 0):
-                    trainFinal = train[:(countDischarge)]
-                    trainingSet = trainingSet.append(trainFinal)
-                else:
-                    test = testDeath[testDeath.uhid == sort_orders_death[i][0]]
-                    testFinal = test[:(countDischarge)]
-                    testingSet = testingSet.append(testFinal)
-
-                train = trainDischarge[trainDischarge.uhid == sort_orders_discharge[i][0]]
-                if(len(train) > 0):
-                    trainingSet = trainingSet.append(train)
-                else:
+                train = trainingSetDeath[trainingSetDeath.uhid == sort_orders_training_death[i][0]]
+                trainFinal = train[:(countDischarge)]
+                trainingSet = trainingSet.append(trainFinal)
                     
-                    test = testDischarge[testDischarge.uhid == sort_orders_discharge[i][0]] 
-                    testingSet = testingSet.append(test)
-            else:
-                train = trainDischarge[trainDischarge.uhid == sort_orders_discharge[i][0]]
-                if(len(train) > 0):
-                    trainFinal = train[:(countDeath)]
-                    trainingSet = trainingSet.append(trainFinal)
-                else:
-                    test = testDischarge[testDischarge.uhid == sort_orders_discharge[i][0]]
-                    testFinal = test[:(countDeath)]
-                    testingSet = testingSet.append(testFinal)
+                train = trainingSetDischarge[trainingSetDischarge.uhid == sort_orders_training_discharge[i][0]]
+                trainingSet = trainingSet.append(train)
 
-                train = trainDeath[trainDeath.uhid == sort_orders_death[i][0]]
-                if(len(train) > 0):
-                    trainingSet = trainingSet.append(train)
-                else:
-                    test = testDeath[testDeath.uhid == sort_orders_death[i][0]]
-                    testingSet = testingSet.append(test)
-           
+            else:
+                train = trainingSetDischarge[trainingSetDischarge.uhid == sort_orders_training_discharge[i][0]]
+                trainFinal = train[:(countDeath)]
+                trainingSet = trainingSet.append(trainFinal)
+                
+                train = trainingSetDeath[trainingSetDeath.uhid == sort_orders_training_death[i][0]]
+                trainingSet = trainingSet.append(train)
+                
+
+        testingSetDischarge = testingSet[testingSet.dischargestatus == 1]
+        testingSetDeath = testingSet[testingSet.dischargestatus == 0]
+
+        #Sorting the testing of death cases and discharge cases in descending order to balance the set
+        sort_orders_testing_death = testingSetDeath.groupby('uhid')
+        sort_orders_testing_discharge = testingSetDischarge.groupby('uhid')
+
+        symbols = testingSetDischarge.groupby('uhid')
+        dict = {}
+        for symbol, group in symbols:
+            dict[symbol] = len(group)
+        sort_orders_testing_discharge = sorted(dict.items(), key=lambda x: x[1], reverse=True)
+
+        symbols = testingSetDeath.groupby('uhid')
+        dict = {}
+        for symbol, group in symbols:
+            dict[symbol] = len(group)
+        sort_orders_testing_death = sorted(dict.items(), key=lambda x: x[1], reverse=True)
+        
+        testingSet = pd.DataFrame(columns=gd.columns)
+        for i in range(0, len(sort_orders_testing_discharge)):
+
+            countDeath = sort_orders_testing_death[i][1]
+            countDischarge = sort_orders_testing_discharge[i][1]
+            if(countDeath > countDischarge):
+                
+                test = testingSetDeath[testingSetDeath.uhid == sort_orders_testing_death[i][0]]
+                testFinal = test[:(countDischarge)]
+                testingSet = testingSet.append(testFinal)
+                    
+                test = testingSetDischarge[testingSetDischarge.uhid == sort_orders_testing_discharge[i][0]]
+                testingSet = testingSet.append(test)
+
+            else:
+                test = testingSetDischarge[testingSetDischarge.uhid == sort_orders_testing_discharge[i][0]]
+                testFinal = test[:(countDeath)]
+                testingSet = testingSet.append(testFinal)
+                
+                test = testingSetDeath[testingSetDeath.uhid == sort_orders_testing_death[i][0]]
+                testingSet = testingSet.append(test)
 
         #Calculating Death Count
         #death_count = final_df[final_df.dischargestatus == 1]
