@@ -204,7 +204,7 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
 
 #LSTM model
 def lstm_model(n,gd,hdpPlotdict,factor,trainingSet,testingSet):
-    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weights=True,patience=3)
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weights=True,patience=4)
     auc_roc_inter = []
     val_a = []
     train_a = []
@@ -221,6 +221,8 @@ def lstm_model(n,gd,hdpPlotdict,factor,trainingSet,testingSet):
 
             Xtrain,Xtest,ytrain1,ytest1,xTestWithUHID = make_lstm_visualize(gd,factor,trainingSet,testingSet)
             #Building the LSTM model
+
+            """
             X = Input(shape=(None, n), name='X')
             mX = Masking()(X)
             # X-> BidirectionalLSTM -> MASKING LAYER -> LSTM -> Dense -> y 
@@ -228,18 +230,37 @@ def lstm_model(n,gd,hdpPlotdict,factor,trainingSet,testingSet):
             #for timeseries data of varying length - in case one patient has 15 pulse rate values vs the second patient has 10
             # masking will handle this mismatch of data
             mX = lstm(mX)
-            L = LSTM(units=64,activation='tanh',return_sequences=False)(mX)
+            
+            L = LSTM(units=128,activation='tanh',return_sequences=False)(mX)
             y = Dense(1, activation="sigmoid")(L)
             outputs = [y]
             inputs = [X]
             model = Model(inputs,outputs)
-            model.compile(loss="binary_crossentropy",optimizer='adam',metrics=['accuracy'])
+
+            """
+            #X = Input(shape=(None, n), name='X')
+            model = Sequential()
+            inputNumberNeuron = 512
+            multiplEachLayer = (1)
+            n_steps = 15
+            hiddenLayerNeuron1 = int(multiplEachLayer*inputNumberNeuron)
+            #hiddenLayerNeuron2 = int(multiplEachLayer*hiddenLayerNeuron1)
+            #model.add(LSTM(inputNumberNeuron, activation='tanh', return_sequences=True, input_shape=(15, n)))
+            model.add(Bidirectional(LSTM(inputNumberNeuron, activation='tanh',return_sequences=True), input_shape=(n_steps, n)))
+            #model.add(Dropout(0.4))
+            #model.add(LSTM(hiddenLayerNeuron1,activation='tanh',return_sequences=True))
+            model.add(LSTM(256,activation='tanh'))
+            model.add(Dense(1, activation="sigmoid"))
+            model.summary()
+            model.compile(optimizer='adam', loss='binary_crossentropy',metrics=['accuracy'])
+            #model.compile(loss="binary_crossentropy",optimizer='adam',metrics=['accuracy'])
             #validation accuracy
             v_a = []
             #training accuracy
             t_a = []
             #fitting the model
-            history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.30,epochs=38,callbacks=[es])
+            #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
+            history = model.fit(Xtrain, ytrain1, batch_size=15 ,validation_split=0.15,epochs=38)
 
             trainLSTM[str(iterationCounter)] = history.history['loss']
             valLSTM[str(iterationCounter)] = history.history['val_loss']
