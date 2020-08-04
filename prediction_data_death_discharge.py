@@ -168,15 +168,6 @@ def prepareTrainTestSet(gd):
             else:
                 trainDeath = trainDeath.append(train)
 
-        trainingSet['spo2_processed'] = trainingSet.apply(lambda x: process_spo2(x['dischargestatus']), axis=1)
-    
-        #checking
-        checkspo2 = trainingSet[trainingSet.dischargestatus == 0]
-        print("spo2_processed training discharge", checkspo2.spo2_processed.unique())
-
-        checkspo2 = trainingSet[trainingSet.dischargestatus == 1]
-        print("spo2_processed training death", checkspo2.spo2_processed.unique())
-
         testDeath = pd.DataFrame(columns=gd.columns)
         testDischarge = pd.DataFrame(columns=gd.columns)
 
@@ -189,15 +180,7 @@ def prepareTrainTestSet(gd):
                 testDischarge = testDischarge.append(test)
             else:
                 testDeath = testDeath.append(test)
-
         
-        testingSet['spo2_processed'] = testingSet.apply(lambda x: process_spo2(x['dischargestatus']), axis=1)
-
-        checkspo2 = testingSet[testingSet.dischargestatus == 0]
-        print("spo2_processed testing discharge", checkspo2.spo2_processed.unique())
-
-        checkspo2 = testingSet[testingSet.dischargestatus == 1]
-        print("spo2_processed testing death", checkspo2.spo2_processed.unique())
         #Till here the code can be non-commented when hardcoded for training and testing list
         
         print('--------------------TRAINING SET BEFORE BALANCE---------------------')
@@ -455,6 +438,14 @@ inter = ['dischargestatus', 'mean_bp',
 cont  = ['spo2_processed', 'dischargestatus', 'uhid']
 preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
+
+preparedData['spo2_processed'] = preparedData.apply(lambda x: process_spo2(x['dischargestatus']), axis=1)
+    
+checkspo2 = preparedData[preparedData.dischargestatus == 0]
+print("spo2_processed testing discharge", checkspo2.spo2_processed.unique())
+
+checkspo2 = preparedData[preparedData.dischargestatus == 1]
+print("spo2_processed testing death", checkspo2.spo2_processed.unique())
 
 for i in range(1):
     trainingSet,testingSet = prepareTrainTestSet(preparedData)
