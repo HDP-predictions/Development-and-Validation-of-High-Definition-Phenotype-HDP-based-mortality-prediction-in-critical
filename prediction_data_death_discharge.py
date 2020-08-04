@@ -10,7 +10,14 @@ from calculate_imputation import *
 from sklearn.model_selection import train_test_split
 from random import shuffle
 from math import *
+import random
 #from prediction_lrm import *
+
+def process_spo2(outcome):
+    if outcome == 0:
+        return random.randint(90, 100)
+    else:
+        return random.randint(50, 80)
 
 def splittingSets(dfCase,final_df):
 
@@ -113,7 +120,7 @@ def prepareTrainTestSet(gd):
         trainingSet = pd.DataFrame(columns=gd.columns)
         testingSet = pd.DataFrame(columns=gd.columns)
 
-        final_df = final_df[final_df["spo2"] != -999]
+        #final_df = final_df[final_df["spo2"] != -999]
         
         # #Splitting the Data from into discharge and death
         # deathCases = final_df[final_df.dischargestatus == 1]
@@ -161,6 +168,14 @@ def prepareTrainTestSet(gd):
             else:
                 trainDeath = trainDeath.append(train)
 
+        trainingSet['spo2_processed'] = trainingSet.apply(lambda x: process_spo2(x['dischargestatus']), axis=1)
+    
+        #checking
+        checkspo2 = trainingSet[trainingSet.dischargestatus == 0]
+        print("spo2_processed training discharge", checkspo2.spo2_processed.unique())
+
+        checkspo2 = trainingSet[trainingSet.dischargestatus == 1]
+        print("spo2_processed training death", checkspo2.spo2_processed.unique())
 
         testDeath = pd.DataFrame(columns=gd.columns)
         testDischarge = pd.DataFrame(columns=gd.columns)
@@ -176,7 +191,13 @@ def prepareTrainTestSet(gd):
                 testDeath = testDeath.append(test)
 
         
-        
+        testingSet['spo2_processed'] = testingSet.apply(lambda x: process_spo2(x['dischargestatus']), axis=1)
+
+        checkspo2 = testingSet[testingSet.dischargestatus == 0]
+        print("spo2_processed testing discharge", checkspo2.spo2_processed.unique())
+
+        checkspo2 = testingSet[testingSet.dischargestatus == 1]
+        print("spo2_processed testing death", checkspo2.spo2_processed.unique())
         #Till here the code can be non-commented when hardcoded for training and testing list
         
         print('--------------------TRAINING SET BEFORE BALANCE---------------------')
@@ -273,6 +294,10 @@ def prepareTrainTestSet(gd):
                 test = testingSetDeath[testingSetDeath.uhid == sort_orders_testing_death[i][0]]
                 testingSet = testingSet.append(test)
 
+        print(sort_orders_testing_discharge,'sort_orders_testing_discharge')
+        print(sort_orders_training_discharge,'sort_orders_training_discharge')
+        print(sort_orders_training_death,'sort_orders_training_death')
+        print(sort_orders_testing_death,'sort_orders_testing_death')
         #Calculating Death Count
         #death_count = final_df[final_df.dischargestatus == 1]
 
@@ -427,8 +452,8 @@ inter = ['dischargestatus', 'mean_bp',
        'total_intake', 'totalparenteralvolume',
        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
        'urine', 'urine_per_hour', 'uhid']
-cont  = ['pulserate','ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
-#preparedData = pd.read_csv('lstm_analysis.csv')
+cont  = ['spo2_processed', 'dischargestatus', 'uhid']
+preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
 
 for i in range(1):
