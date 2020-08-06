@@ -201,7 +201,7 @@ def mod(x):
         return 0             
 def steroid(x):
     try:          
-        if not(x is None) and ('beta' in x):
+        if not(x is None) and (('Beta' in x) or (('Dexa' in x))):
             return 1
         else:
             return 0
