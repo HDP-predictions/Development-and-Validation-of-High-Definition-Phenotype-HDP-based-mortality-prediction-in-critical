@@ -545,9 +545,6 @@ def manageStoolAbdominalGirthAndForwardFill(s4):
             for i in range(int(n)):          
                 y = x[(x['hour_series']>=start_date + timedelta(hours=24*i)) & (x['hour_series']<=start_date + timedelta(hours=24*(i+1)))]
                 y['stool_day_total'] = (y['stool_passed'].sum())/60
-                y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
-                y['sys_bp'].fillna((y['sys_bp'].min()), inplace=True)
-                y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
                 df =df.append(y,ignore_index=True)
         test = df.copy()
         dq = pd.DataFrame()
@@ -598,7 +595,45 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
         test_cont['cont_time'] = test_cont.starttime.apply(con_time)
         final['cont_time'] = final.ref_hour.apply(con_time_2)
         qw = pd.merge(final,test_cont, on=['uhid','cont_time'],how='left')
+
+        # #Replacing Nan values of BP with minimum value of that day
+        # print(qw.columns)
+        # print(type(qw.hour_series_x))
+        # print(qw.hour_series_x)
+        # qw['day'] = qw['hour_series_x'].apply(split_date_1)
+        # qw['hour_series_x'] = qw['hour_series_x'].apply(to_date)
+        # finalDataSet = pd.DataFrame()
+        
+        # n = math.ceil(len(qw)/24)+1
+        # start_date = pd.to_datetime(qw['day'].iloc[0]+" " + "08:00:00") - timedelta(hours=24)
+        # for i in range(int(n)):          
+        #     y = qw[(qw['hour_series_x']>=start_date + timedelta(hours=24*i)) & (qw['hour_series_x']<=start_date + timedelta(hours=24*(i+1)))]
+        #     y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
+        #     y['sys_bp'].fillna((y['sys_bp'].min()), inplace=True)
+        #     y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
+        #     finalDataSet =finalDataSet.append(y,ignore_index=True)
+
+
         return qw
+
+def manageBPPhysiological(uhidDataSet):
+
+    uhidDataSet['hour_series'] = uhidDataSet['hour_series_x'].apply(to_date)
+    n = math.ceil(len(uhidDataSet)/24)+1
+    start_date = pd.to_datetime(uhidDataSet['day'].iloc[0]+" " + "08:00:00") - timedelta(hours=24)
+    finalDataSet = pd.DataFrame()
+    for inner in range(int(n)): 
+
+        y = uhidDataSet[(uhidDataSet['hour_series']>=start_date + timedelta(hours=24*inner)) & (uhidDataSet['hour_series']<=start_date + timedelta(hours=24*(inner+1)))]
+        y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
+        y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
+        y['sys_bp'].fillna((y['sys_bp'].min()), inplace=True)
+        finalDataSet =finalDataSet.append(y,ignore_index=True)
+
+    print('Total number of columns in manageBPPhysiological ='+str(len(finalDataSet.columns)))
+
+    return finalDataSet
+
 def convertCategoricalToBinary(qw):
         qw['gender'] = qw['gender'].apply(gender)
         qw['inout_patient_status'] = qw['inout_patient_status'].apply(in_out)
@@ -676,6 +711,7 @@ def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
         hdpDataFrame = addParentralAndTotalNutrition(con,schemaName,patientCaseUHID,hdpDataFrame) 
         hdpDataFrame = manageStoolAbdominalGirthAndForwardFill(hdpDataFrame)           
         hdpDataFrame = addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,hdpDataFrame)
+        #hdpDataFrame = manageBPPhysiological(hdpDataFrame)
         hdpDataFrame = convertCategoricalToBinary(hdpDataFrame)
         hdpDataFrame = forwardFillHDPData(hdpDataFrame)
 
