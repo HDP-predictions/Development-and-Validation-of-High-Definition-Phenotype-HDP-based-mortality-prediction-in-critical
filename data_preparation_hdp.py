@@ -545,9 +545,6 @@ def manageStoolAbdominalGirthAndForwardFill(s4):
             for i in range(int(n)):          
                 y = x[(x['hour_series']>=start_date + timedelta(hours=24*i)) & (x['hour_series']<=start_date + timedelta(hours=24*(i+1)))]
                 y['stool_day_total'] = (y['stool_passed'].sum())/60
-                y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
-                y['sys_bp'].fillna((y['sys_bp'].min()), inplace=True)
-                y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
                 df =df.append(y,ignore_index=True)
         test = df.copy()
         dq = pd.DataFrame()
@@ -607,8 +604,9 @@ def manageBPPhysiological(uhidDataSet):
     n = math.ceil(len(uhidDataSet)/24)+1
     start_date = pd.to_datetime(uhidDataSet['day'].iloc[0]+" " + "08:00:00") - timedelta(hours=24)
     finalDataSet = pd.DataFrame()
+    print(type(start_date))
     for inner in range(int(n)): 
-
+        print(uhidDataSet['hour_series'])
         y = uhidDataSet[(uhidDataSet['hour_series']>=start_date + timedelta(hours=24*inner)) & (uhidDataSet['hour_series']<=start_date + timedelta(hours=24*(inner+1)))]
         y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
         y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
