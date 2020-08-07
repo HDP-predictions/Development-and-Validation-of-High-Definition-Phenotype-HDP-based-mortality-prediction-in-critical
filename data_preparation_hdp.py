@@ -600,16 +600,29 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
 
 def manageBPPhysiological(uhidDataSet):
 
+    print('Start BP Data Imputation')
     uhidDataSet['hour_series'] = uhidDataSet['hour_series_x'].apply(to_date)
     n = math.ceil(len(uhidDataSet)/24)+1
     start_date = pd.to_datetime(uhidDataSet['day'].iloc[0]+" " + "08:00:00") - timedelta(hours=24)
     finalDataSet = pd.DataFrame()
     print(type(start_date))
     for inner in range(int(n)): 
-        print(uhidDataSet['hour_series'])
+
         y = uhidDataSet[(uhidDataSet['hour_series']>=start_date + timedelta(hours=24*inner)) & (uhidDataSet['hour_series']<=start_date + timedelta(hours=24*(inner+1)))]
+        y['mean_bp'].replace('None', np.nan, inplace=True)
+        y.mean_bp.fillna(value=np.nan, inplace=True)
+        y['mean_bp'] = y['mean_bp'].apply(to_float)
         y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
+
+        y['dia_bp'].replace('None', np.nan, inplace=True)
+        y.dia_bp.fillna(value=np.nan, inplace=True)
+        y['dia_bp'] = y['dia_bp'].apply(to_float)
         y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
+
+        
+        y['sys_bp'].replace('None', np.nan, inplace=True)
+        y.sys_bp.fillna(value=np.nan, inplace=True)
+        y['sys_bp'] = y['sys_bp'].apply(to_float)
         y['sys_bp'].fillna((y['sys_bp'].min()), inplace=True)
         finalDataSet =finalDataSet.append(y,ignore_index=True)
 
@@ -694,7 +707,7 @@ def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
         hdpDataFrame = addParentralAndTotalNutrition(con,schemaName,patientCaseUHID,hdpDataFrame) 
         hdpDataFrame = manageStoolAbdominalGirthAndForwardFill(hdpDataFrame)           
         hdpDataFrame = addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,hdpDataFrame)
-        #hdpDataFrame = manageBPPhysiological(hdpDataFrame)
+        hdpDataFrame = manageBPPhysiological(hdpDataFrame)
         hdpDataFrame = convertCategoricalToBinary(hdpDataFrame)
         hdpDataFrame = forwardFillHDPData(hdpDataFrame)
 
