@@ -6,6 +6,8 @@ import numpy as np
 import psycopg2
 import math
 from datetime import timedelta
+from datetime import datetime
+import datetime
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -235,9 +237,35 @@ def range_finder(x):
     fractional = (x/15.0) - math.floor(x/15.0)
     return int(round(fractional*15))
 
+def unionHeartPulseRate(hr,pr):
+
+    hrValue = True
+    if(hr != None and hr != ''):
+        x = float(hr)
+        if(math.isnan(x)):
+            hrValue = False
+    else:
+        hrValue = False
+
+    if hrValue == True:
+        return hr
+    else:
+        prValue = True
+        if(pr != None and pr != ''):
+            x = float(pr)
+            if(math.isnan(x)):
+                prValue = False
+        else:
+            prValue = False
+
+        if prValue == True:
+            return pr
+        else:
+            return np.nan
+
 def unionDeviceNurseBP(nurseBp,deviceBp,nurseIbp,deviceIbp):
 
-    print(nurseBp,deviceBp,nurseIbp,deviceIbp)
+    #print(nurseBp,deviceBp,nurseIbp,deviceIbp)
     #Check Nurse BP
     nurseBpValue = True
     if(nurseBp != None and nurseBp != ''):
@@ -614,12 +642,74 @@ def manageStoolAbdominalGirthAndForwardFill(s4):
         PrintException()
         return s4
 
+def manageRespSupport(con,schemaName,caseType,patientCaseUHID,final):
+
+    #Resp Support only for Invasive Support
+    cur = con.cursor()
+    cur.execute("Select t1.rs_vent_type,t1.creationtime,t1.isactive FROM "+schemaName+".respsupport as t1 LEFT JOIN "+schemaName+".baby_detail AS t2 ON t1.uhid=t2.uhid where t1.uhid = '"+ patientCaseUHID+"' and t1.creationtime < t2.dischargeddate order by t1.creationtime")
+    respSupportList = cur.fetchall()
+    isInvasiveGot = False
+    starttime = None
+    endTime = None
+    df = pd.DataFrame()
+    for support in respSupportList:
+        if(support[0] != None):
+            if((("HFO" in support[0]) or ("Mechanical Ventilation" in support[0])) and (isInvasiveGot == False)):
+                isInvasiveGot = True
+                starttime = support[1]
+                starttime = starttime.replace(second=0)
+            elif(isInvasiveGot == True and ((("HFO" not in support[0]) and ("Mechanical Ventilation" not in support[0])) or support[2] == False)):
+                isInvasiveGot = False
+                endTime = support[1]
+                while endTime.timestamp() > starttime.timestamp():
+                    starttimeStr = str(starttime)
+                    x = [{'uhid': patientCaseUHID, 'ref_hour_x': starttimeStr.split("+")[0], 'respsupport':1}]
+
+                    df = df.append(x,ignore_index=True)
+                    starttime += datetime.timedelta(seconds=60)
+
+                endTime = None
+                starttime = None
+        elif((support[0] == None or support[2] == False) and isInvasiveGot == True):
+            isInvasiveGot = False
+            endTime = support[1]
+            endTime = endTime.replace(second=0)
+            while endTime.timestamp() > starttime.timestamp():
+                starttimeStr = str(starttime)
+                x = [{'uhid': patientCaseUHID, 'ref_hour_x': starttimeStr.split("+")[0], 'respsupport':1}]
+                
+                df = df.append(x,ignore_index=True)
+                starttime += datetime.timedelta(seconds=60)
+
+            endTime = None
+            starttime = None
+
+    #If baby is marked discharged or death without stopping the resp Support
+    if(starttime != None and isInvasiveGot == True):
+        dod = final.dischargeddate[0]
+        while dod.timestamp() > starttime.timestamp():
+            starttimeStr = str(starttime)
+            x = [{'uhid': patientCaseUHID, 'ref_hour_x': starttimeStr.split("+")[0], 'respsupport':1}]
+            
+            df = df.append(x,ignore_index=True)
+            starttime += datetime.timedelta(seconds=60)
+
+    s4 = pd.merge(final,df,on = ['uhid','ref_hour_x'], how='left')
+    s4.drop_duplicates(subset=['uhid','ref_hour_x'],inplace=True)
+
+    #If resp support is nan then fill those rows with 0 indicates that resp support is OFF
+    s4['respsupport'].fillna((0), inplace=True)
+
+    print('Total number of columns in RespSupport ='+str(len(s4.columns)))
+
+    return s4
+
 def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,final):
 
         #Vital Parameters
         cur1 = con.cursor()
         #combine data of monitor and monitor dump
-        queryStr = "SELECT t11.uhid,t11.starttime,t11.pulserate, t11.ecg_resprate, t11.spo2, t11.heartrate, t21.dischargestatus,t11.mean_bp as device_mean_bp,t11.sys_bp as device_sys_bp,t11.dia_bp as device_dia_bp,t11.nbp_s,t11.nbp_d,t11.nbp_m  FROM "+schemaName+".device_monitor_detail AS t11 LEFT JOIN "+schemaName+".baby_detail AS t21 ON t11.uhid=t21.uhid WHERE (t21.dischargestatus = '"+caseType+"' AND t21.dateofadmission > '2018-07-01' and t21.uhid = '"+ patientCaseUHID+"' AND t11.starttime < t21.dischargeddate)  UNION" + " SELECT t12.uhid,t12.starttime,t12.pulserate, t12.ecg_resprate, t12.spo2, t12.heartrate, t22.dischargestatus,t12.mean_bp as device_mean_bp,t12.sys_bp as device_sys_bp,t12.dia_bp as device_dia_bp,t12.nbp_s,t12.nbp_d,t12.nbp_m  FROM "+schemaName+".device_monitor_detail_dump AS t12 LEFT JOIN "+schemaName+".baby_detail AS t22 ON t12.uhid=t22.uhid WHERE (t22.dischargestatus = '"+caseType+"' AND t22.dateofadmission > '2018-07-01' and t22.uhid = '"+ patientCaseUHID+"' AND t12.starttime < t22.dischargeddate);"
+        queryStr = "SELECT t11.uhid,t11.starttime,t11.pulserate, t11.ecg_resprate, t11.spo2, t11.heartrate as heartrate_test, t21.dischargestatus,t11.mean_bp as device_mean_bp,t11.sys_bp as device_sys_bp,t11.dia_bp as device_dia_bp,t11.nbp_s,t11.nbp_d,t11.nbp_m  FROM "+schemaName+".device_monitor_detail AS t11 LEFT JOIN "+schemaName+".baby_detail AS t21 ON t11.uhid=t21.uhid WHERE (t21.dischargestatus = '"+caseType+"' AND t21.dateofadmission > '2018-07-01' and t21.uhid = '"+ patientCaseUHID+"' AND t11.starttime < t21.dischargeddate)  UNION" + " SELECT t12.uhid,t12.starttime,t12.pulserate, t12.ecg_resprate, t12.spo2, t12.heartrate as heartrate_test, t22.dischargestatus,t12.mean_bp as device_mean_bp,t12.sys_bp as device_sys_bp,t12.dia_bp as device_dia_bp,t12.nbp_s,t12.nbp_d,t12.nbp_m  FROM "+schemaName+".device_monitor_detail_dump AS t12 LEFT JOIN "+schemaName+".baby_detail AS t22 ON t12.uhid=t22.uhid WHERE (t22.dischargestatus = '"+caseType+"' AND t22.dateofadmission > '2018-07-01' and t22.uhid = '"+ patientCaseUHID+"' AND t12.starttime < t22.dischargeddate);"
         cur1.execute(queryStr)
         cols1 = list(map(lambda x: x[0], cur1.description))
         ds = pd.DataFrame(cur1.fetchall(),columns=cols1)
@@ -639,7 +729,7 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
 
         print('Total number of columns in cont_data ='+str(len(cont_data.columns)))             
        
-        test_cont = cont_data.drop_duplicates(subset=['uhid','starttime','heartrate'],keep='first')
+        test_cont = cont_data.drop_duplicates(subset=['uhid','starttime','heartrate_test'],keep='first')
         test_cont['hour_series'] = test_cont['date'].apply(split_hour)
         test_cont['ref_hour'] = test_cont['hour_series'].apply(to_str)
         final['ref_hour'] = final['hour_series'].apply(to_str)
@@ -653,6 +743,9 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
         qw['sys_bp'] = qw.apply(lambda x: unionDeviceNurseBP(x['nurse_sys_bp'], x['device_sys_bp'], x['systibp'], x['nbp_s']), axis=1)
         qw['dia_bp'] = qw.apply(lambda x: unionDeviceNurseBP(x['nurse_diast_bp'], x['device_dia_bp'], x['diastibp'], x['nbp_d']), axis=1)
        
+        #Taking union of HR/PR of Device
+        qw['heartrate'] = qw.apply(lambda x: unionHeartPulseRate(x['heartrate_test'], x['pulserate']), axis=1)
+
         return qw
 
 def manageBPPhysiological(uhidDataSet):
@@ -763,6 +856,7 @@ def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
         hdpDataFrame = addParentralAndTotalNutrition(con,schemaName,patientCaseUHID,hdpDataFrame) 
         hdpDataFrame = manageStoolAbdominalGirthAndForwardFill(hdpDataFrame)           
         hdpDataFrame = addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,hdpDataFrame)
+        hdpDataFrame = manageRespSupport(con,schemaName,caseType,patientCaseUHID,hdpDataFrame)    
         hdpDataFrame = manageBPPhysiological(hdpDataFrame)
         hdpDataFrame = convertCategoricalToBinary(hdpDataFrame)
         hdpDataFrame = forwardFillHDPData(hdpDataFrame)
