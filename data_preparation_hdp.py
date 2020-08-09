@@ -776,13 +776,12 @@ def addDerivativeContinuous(uhidDataSet):
             
             y = final_df_hr[(final_df_hr['hour_series']>=starttime) & (final_df_hr['hour_series']<=starttime + timedelta(hours=1))]
             y['heartrate'] = y['heartrate'].apply(to_float)
-            if(len(y) >= 2):
+            if(len(y) > 2):
                 heartrate_SE =sample_entropy(y.heartrate, order=2, metric='chebyshev')
                 heartrate_DFAColumn = nolds.dfa(y.heartrate)
                 heartrate_ADFColumn = adfuller(y.heartrate)[0]
                 heartrate_MeanColumn = np.mean(y.heartrate)
                 heartrate_VarColumn = np.var(y.heartrate)
-
                 y['se_heartrate'] = heartrate_SE
                 y['df_heartrate'] = heartrate_DFAColumn
                 y['adf_heartrate'] = heartrate_ADFColumn
@@ -792,7 +791,7 @@ def addDerivativeContinuous(uhidDataSet):
 
             y = final_df_spo2[(final_df_spo2['hour_series']>=starttime) & (final_df_spo2['hour_series']<=starttime + timedelta(hours=1))]
             y['spo2'] = y['spo2'].apply(to_float)
-            if(len(y) >= 2):
+            if(len(y) > 2):
                 spo2_SE =sample_entropy(y.spo2, order=2, metric='chebyshev')
                 spo2_DFAColumn = nolds.dfa(y.spo2)
                 spo2_ADFColumn = adfuller(y.spo2)[0]
@@ -826,7 +825,7 @@ def addDerivativeContinuous(uhidDataSet):
 
         return s5
     except Exception as e:
-        print('Exception in data preparation', e)
+        print('Exception in data preparation ---------------------------------------', e)
         PrintException()
         return uhidDataSet
 
