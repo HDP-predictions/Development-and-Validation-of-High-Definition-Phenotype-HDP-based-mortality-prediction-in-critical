@@ -8,6 +8,9 @@ import math
 from datetime import timedelta
 from datetime import datetime
 import datetime
+from entropy import sample_entropy
+import nolds
+from statsmodels.tsa.stattools import adfuller
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -748,6 +751,85 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
 
         return qw
 
+def addDerivativeContinuous(uhidDataSet):
+
+    try:
+        print('-----Starting Derivative Continuous Processing')
+        finalDataSet = uhidDataSet.copy()
+
+        #Getting the Start and Ending Time of the case
+        endTime = pd.to_datetime(uhidDataSet.dischargeddate[0])
+        starttime = pd.to_datetime(uhidDataSet.actual_DOA[0])
+
+        #Retrieving only Non-Nan values of HR
+        uhidDataSet['heartrate'].fillna((-999), inplace=True)
+        final_df_hr = uhidDataSet[uhidDataSet["heartrate"] != -999]
+        final_df_hr['hour_series'] = final_df_hr['ref_hour_x'].apply(to_date)
+        df_hr = pd.DataFrame()
+
+        #Retrieving only Non-Nan values of Spo2
+        uhidDataSet['spo2'].fillna((-999), inplace=True)
+        final_df_spo2 = uhidDataSet[uhidDataSet["spo2"] != -999]
+        final_df_spo2['hour_series'] = final_df_spo2['ref_hour_x'].apply(to_date)
+        df_spo2 = pd.DataFrame()
+        while endTime.timestamp() > starttime.timestamp():
+            
+            y = final_df_hr[(final_df_hr['hour_series']>=starttime) & (final_df_hr['hour_series']<=starttime + timedelta(hours=1))]
+            y['heartrate'] = y['heartrate'].apply(to_float)
+            if(len(y) >= 2):
+                heartrate_SE =sample_entropy(y.heartrate, order=2, metric='chebyshev')
+                heartrate_DFAColumn = nolds.dfa(y.heartrate)
+                heartrate_ADFColumn = adfuller(y.heartrate)[0]
+                heartrate_MeanColumn = np.mean(y.heartrate)
+                heartrate_VarColumn = np.var(y.heartrate)
+
+                y['se_heartrate'] = heartrate_SE
+                y['df_heartrate'] = heartrate_DFAColumn
+                y['adf_heartrate'] = heartrate_ADFColumn
+                y['mean_heartrate'] = heartrate_MeanColumn
+                y['var_heartrate'] = heartrate_VarColumn
+                df_hr = df_hr.append(y,ignore_index=True)
+
+            y = final_df_spo2[(final_df_spo2['hour_series']>=starttime) & (final_df_spo2['hour_series']<=starttime + timedelta(hours=1))]
+            y['spo2'] = y['spo2'].apply(to_float)
+            if(len(y) >= 2):
+                spo2_SE =sample_entropy(y.spo2, order=2, metric='chebyshev')
+                spo2_DFAColumn = nolds.dfa(y.spo2)
+                spo2_ADFColumn = adfuller(y.spo2)[0]
+                spo2_MeanColumn = np.mean(y.spo2)
+                spo2_VarColumn = np.var(y.spo2)
+
+                y['se_spo2'] = spo2_SE
+                y['df_spo2'] = spo2_DFAColumn
+                y['adf_spo2'] = spo2_ADFColumn
+                y['mean_spo2'] = spo2_MeanColumn
+                y['var_spo2'] = spo2_VarColumn
+                df_spo2 = df_spo2.append(y,ignore_index=True)
+
+            #Incrementing after every 60 min
+            starttime += datetime.timedelta(seconds=3600)
+
+        cols_to_use = ['se_heartrate','df_heartrate','adf_heartrate','mean_heartrate','var_heartrate','uhid','ref_hour_x']
+        gd_hr = df_hr[cols_to_use]
+
+        s4 = pd.merge(finalDataSet,gd_hr,on = ['uhid','ref_hour_x'], how='left')
+        s4.drop_duplicates(subset=['uhid','ref_hour_x'],inplace=True)
+
+        cols_to_use = ['se_spo2','df_spo2','adf_spo2','mean_spo2','var_spo2','uhid','ref_hour_x']
+        gd_spo2 = df_spo2[cols_to_use]
+
+        s5 = pd.merge(s4,gd_spo2,on = ['uhid','ref_hour_x'], how='left')
+        s5.drop_duplicates(subset=['uhid','ref_hour_x'],inplace=True)
+
+        print('Total number of columns in  DerivativeContinuousProcessing='+str(len(s5.columns)))
+        print('-----Ending Derivative Continuous Processing')
+
+        return s5
+    except Exception as e:
+        print('Exception in data preparation', e)
+        PrintException()
+        return uhidDataSet
+
 def manageBPPhysiological(uhidDataSet):
 
     print('Start BP Data Imputation')
@@ -858,6 +940,7 @@ def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
         hdpDataFrame = addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,hdpDataFrame)
         hdpDataFrame = manageRespSupport(con,schemaName,caseType,patientCaseUHID,hdpDataFrame)    
         hdpDataFrame = manageBPPhysiological(hdpDataFrame)
+        hdpDataFrame = addDerivativeContinuous(hdpDataFrame)
         hdpDataFrame = convertCategoricalToBinary(hdpDataFrame)
         hdpDataFrame = forwardFillHDPData(hdpDataFrame)
 
