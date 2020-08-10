@@ -344,7 +344,7 @@ def read_prepare_data(con, patientCaseUHID,caseType,conditionCase,folderName):
         print('Data prepared now for uhid=', patientCaseUHID,'  length of file',len(pwData))    
         return fileName, pwData    
     except Exception as e:
-        print('Exception in data preparation', e)
+        print('Exception in read_prepare_data', e)
         PrintException()
         return None
 
@@ -641,7 +641,7 @@ def manageStoolAbdominalGirthAndForwardFill(s4):
         print('Total number of columns in  manageStoolAbdominalGirthAndForwardFill='+str(len(final.columns)))              
         return final
     except Exception as e:
-        print('Exception in data preparation', e)
+        print('Exception in manageStoolAbdominalGirthAndForwardFill', e)
         PrintException()
         return s4
 
@@ -783,6 +783,7 @@ def addDerivativeContinuous(uhidDataSet):
         starttime = pd.to_datetime(uhidDataSet.actual_DOA[0])
 
         #Retrieving only Non-Nan values of HR
+        uhidDataSet['heartrate'].dropna()
         uhidDataSet['heartrate'].fillna((-999), inplace=True)
         final_df_hr = uhidDataSet[uhidDataSet["heartrate"] != -999]
         final_df_hr['hour_series'] = final_df_hr['ref_hour_x'].apply(to_date)
@@ -793,9 +794,9 @@ def addDerivativeContinuous(uhidDataSet):
         final_df_spo2 = uhidDataSet[uhidDataSet["spo2"] != -999]
         final_df_spo2['hour_series'] = final_df_spo2['ref_hour_x'].apply(to_date)
         df_spo2 = pd.DataFrame()
-        while endTime.timestamp() > starttime.timestamp():
-            
-            y = final_df_hr[(final_df_hr['hour_series']>=starttime) & (final_df_hr['hour_series']<=starttime + timedelta(hours=1))]
+        initialStartTime = starttime
+        while endTime.timestamp() > starttime.timestamp():       
+            y = final_df_hr[(final_df_hr['hour_series']>=initialStartTime) & (final_df_hr['hour_series']<=starttime + timedelta(hours=1))]
             y['heartrate'] = y['heartrate'].apply(to_float)
             if(len(y) > 2):
                 
@@ -817,7 +818,7 @@ def addDerivativeContinuous(uhidDataSet):
                 y['var_heartrate'] = heartrate_VarColumn
                 df_hr = df_hr.append(y,ignore_index=True)
 
-            y = final_df_spo2[(final_df_spo2['hour_series']>=starttime) & (final_df_spo2['hour_series']<=starttime + timedelta(hours=1))]
+            y = final_df_spo2[(final_df_spo2['hour_series']>=initialStartTime) & (final_df_spo2['hour_series']<=starttime + timedelta(hours=1))]
             y['spo2'] = y['spo2'].apply(to_float)
             if(len(y) > 2):
                 if(len(y) == 3):
@@ -912,10 +913,9 @@ def convertCategoricalToBinary(qw):
 def forwardFillHDPData(qw):
         # Next is data fill step
         print ('data preparation forward filling started')    
-        qw['pulserate'].fillna(method='ffill',limit=5)
-        qw['heartrate'].fillna(method='ffill',limit=5)
+        qw['heartrate'] = qw['heartrate'].fillna(method='ffill',limit=5)
         qw['ecg_resprate'].fillna(method='ffill',limit=5)
-        qw['spo2'].fillna(method='ffill',limit=5)
+        qw['spo2'] = qw['spo2'].fillna(method='ffill',limit=5)
         qw['peep'].fillna(method='ffill')
         qw['pip'].fillna(method='ffill')
         qw['map'].fillna(method='ffill')
@@ -993,7 +993,7 @@ def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
         print('Ended prepare_data_modular')
         return fileName,hdpDataFrame
     except Exception as e:
-        print('Exception in data preparation', e)
+        print('Exception in prepare_data_modular', e)
         PrintException()
         return None
         
