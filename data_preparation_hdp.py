@@ -795,9 +795,22 @@ def addDerivativeContinuous(uhidDataSet):
         final_df_spo2['hour_series'] = final_df_spo2['ref_hour_x'].apply(to_date)
         df_spo2 = pd.DataFrame()
         initialStartTime = starttime
-        while endTime.timestamp() > starttime.timestamp():       
-            y = final_df_hr[(final_df_hr['hour_series']>=initialStartTime) & (final_df_hr['hour_series']<=starttime + timedelta(hours=1))]
+
+        starttime += datetime.timedelta(seconds=21600)
+        if(endTime.timestamp() <= starttime.timestamp()):
+            starttime = endTime
+       
+        counter = 0
+        breakCounter = False
+        while endTime.timestamp() >= starttime.timestamp():  
+
+            y = final_df_hr[(final_df_hr['hour_series']>=initialStartTime) & (final_df_hr['hour_series']<=starttime)]
             y['heartrate'] = y['heartrate'].apply(to_float)
+
+            print("counter------------>",counter)
+            print("len(y)------------>",len(y))
+            print("(y first)------------>",initialStartTime)
+            print("(y last)------------>",starttime)
             if(len(y) > 2):
                 
                 if(len(y) == 3):
@@ -811,14 +824,25 @@ def addDerivativeContinuous(uhidDataSet):
                 heartrate_ADFColumn = adfuller(y.heartrate)[0]
                 heartrate_MeanColumn = np.mean(y.heartrate)
                 heartrate_VarColumn = np.var(y.heartrate)
-                y['se_heartrate'] = heartrate_SE
-                y['df_heartrate'] = heartrate_DFAColumn
-                y['adf_heartrate'] = heartrate_ADFColumn
-                y['mean_heartrate'] = heartrate_MeanColumn
-                y['var_heartrate'] = heartrate_VarColumn
-                df_hr = df_hr.append(y,ignore_index=True)
 
-            y = final_df_spo2[(final_df_spo2['hour_series']>=initialStartTime) & (final_df_spo2['hour_series']<=starttime + timedelta(hours=1))]
+                #Retrieving again to set the value only for that 6 hrs.
+                y_final = final_df_hr[(final_df_hr['hour_series']>=initialStartTime + timedelta(hours=6*counter)) & (final_df_hr['hour_series']<=starttime)]
+
+                print("counter------------>",counter)
+                print("len(y_final)------------>",len(y_final))
+                print("(y_final first)------------>",initialStartTime)
+                print("(y_final last)------------>",starttime)
+
+
+
+                y_final['se_heartrate'] = heartrate_SE
+                y_final['df_heartrate'] = heartrate_DFAColumn
+                y_final['adf_heartrate'] = heartrate_ADFColumn
+                y_final['mean_heartrate'] = heartrate_MeanColumn
+                y_final['var_heartrate'] = heartrate_VarColumn
+                df_hr = df_hr.append(y_final,ignore_index=True)
+
+            y = final_df_spo2[(final_df_spo2['hour_series']>=initialStartTime) & (final_df_spo2['hour_series']<=starttime)]
             y['spo2'] = y['spo2'].apply(to_float)
             if(len(y) > 2):
                 if(len(y) == 3):
@@ -832,15 +856,25 @@ def addDerivativeContinuous(uhidDataSet):
                 spo2_MeanColumn = np.mean(y.spo2)
                 spo2_VarColumn = np.var(y.spo2)
 
-                y['se_spo2'] = spo2_SE
-                y['df_spo2'] = spo2_DFAColumn
-                y['adf_spo2'] = spo2_ADFColumn
-                y['mean_spo2'] = spo2_MeanColumn
-                y['var_spo2'] = spo2_VarColumn
-                df_spo2 = df_spo2.append(y,ignore_index=True)
+                #Retrieving again to set the value only for that 6 hrs.
+                y_final = final_df_hr[(final_df_hr['hour_series']>=initialStartTime + timedelta(hours=6*counter)) & (final_df_hr['hour_series']<=starttime)]
+                y_final['se_spo2'] = spo2_SE
+                y_final['df_spo2'] = spo2_DFAColumn
+                y_final['adf_spo2'] = spo2_ADFColumn
+                y_final['mean_spo2'] = spo2_MeanColumn
+                y_final['var_spo2'] = spo2_VarColumn
+                df_spo2 = df_spo2.append(y_final,ignore_index=True)
 
             #Incrementing after every 60 min
-            starttime += datetime.timedelta(seconds=3600)
+            starttime += datetime.timedelta(seconds=21600)
+            counter = counter + 1
+            if(breakCounter == True):
+                break 
+
+            #For the last chunk of data if the chunk is less than 6 hrs
+            if(endTime.timestamp() <= starttime.timestamp()):
+                starttime = endTime
+                breakCounter = True
 
         cols_to_use = ['se_heartrate','df_heartrate','adf_heartrate','mean_heartrate','var_heartrate','uhid','ref_hour_x']
         gd_hr = df_hr[cols_to_use]
