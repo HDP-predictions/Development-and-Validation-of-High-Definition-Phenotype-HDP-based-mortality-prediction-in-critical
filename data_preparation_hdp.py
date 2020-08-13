@@ -240,7 +240,32 @@ def range_finder(x):
     fractional = (x/15.0) - math.floor(x/15.0)
     return int(round(fractional*15))
 
-def unionHeartPulseRate(hr,pr):
+def unionVentilator(deviceData,nurseData):
+    deviceValue = True
+    if(deviceData != None and deviceData != ''):
+        x = float(deviceData)
+        if(math.isnan(x)):
+            deviceValue = False
+    else:
+        deviceValue = False
+
+    if deviceValue == True:
+        return deviceData
+    else:
+        nurseValue = True
+        if(nurseData != None and nurseData != ''):
+            x = float(nurseData)
+            if(math.isnan(x)):
+                nurseValue = False
+        else:
+            nurseValue = False
+
+        if nurseValue == True:
+            return nurseData
+        else:
+            return np.nan
+
+def unionHeartPulseRate(hr,pr,nurse_hr,nurse_pr):
 
     hrValue = True
     if(hr != None and hr != ''):
@@ -264,7 +289,29 @@ def unionHeartPulseRate(hr,pr):
         if prValue == True:
             return pr
         else:
-            return np.nan
+            hrValue = True
+            if(nurse_hr != None and nurse_hr != ''):
+                x = float(nurse_hr)
+                if(math.isnan(x)):
+                    hrValue = False
+            else:
+                hrValue = False
+
+            if hrValue == True:
+                return nurse_hr
+            else:
+                prValue = True
+                if(nurse_pr != None and nurse_pr != ''):
+                    x = float(nurse_pr)
+                    if(math.isnan(x)):
+                        prValue = False
+                else:
+                    prValue = False
+
+                if prValue == True:
+                    return nurse_pr
+                else:
+                    return np.nan
 
 def unionDeviceNurseBP(nurseBp,deviceBp,nurseIbp,deviceIbp):
 
@@ -517,7 +564,7 @@ def addTemperatureRBSData(con,schemaName,patientCaseUHID,ss):
         print ('data preparation vitals - continuous data started')    
 
         cur3 = con.cursor()
-        cur3.execute("SELECT t1.uhid,t1.entrydate,t1.rbs,t1.skintemp,t1.centraltemp, t1.syst_bp as nurse_sys_bp,t1.diast_bp as nurse_diast_bp,t1.mean_bp as nurse_mean_bp,t1.meanibp,t1.systibp,t1.diastibp FROM "+schemaName+".nursing_vitalparameters AS t1 where t1.uhid = '"+patientCaseUHID+"'")
+        cur3.execute("SELECT t1.uhid,t1.entrydate,t1.rbs,t1.skintemp,t1.centraltemp, t1.syst_bp as nurse_sys_bp,t1.diast_bp as nurse_diast_bp,t1.mean_bp as nurse_mean_bp,t1.meanibp,t1.systibp,t1.diastibp,t1.hr_rate as nurse_heartrate,t1.pulserate as nurse_pulserate FROM "+schemaName+".nursing_vitalparameters AS t1 where t1.uhid = '"+patientCaseUHID+"'")
         cols3 = list(map(lambda x: x[0], cur3.description))
         nv = pd.DataFrame(cur3.fetchall(),columns=cols3)
 
@@ -737,7 +784,7 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
 
         #Ventilator Parameters
         cur_vent = con.cursor()
-        cur_vent.execute("SELECT t1.uhid,t1.start_time,t1.creationtime,t1.peep, t1.pip,t1.map ,t1.tidalvol, t1.minvol,t1.ti,t1.fio2 FROM "+schemaName+".device_ventilator_detail_dump AS t1 LEFT JOIN "+schemaName+".baby_detail AS t2 ON t1.uhid=t2.uhid WHERE (t2.dischargestatus = '"+caseType+"' OR t2.dischargestatus = '"+caseType+"') and t2.uhid = '"+patientCaseUHID+"';")
+        cur_vent.execute("SELECT t1.uhid,t1.start_time,t1.creationtime,t1.peep as peep_device, t1.pip as pip_device,t1.map as map_device ,t1.tidalvol as tidalvol_device, t1.minvol as minvol_device,t1.ti as ti_device,t1.fio2 as fio2_device FROM "+schemaName+".device_ventilator_detail_dump AS t1 LEFT JOIN "+schemaName+".baby_detail AS t2 ON t1.uhid=t2.uhid WHERE (t2.dischargestatus = '"+caseType+"' AND t2.dateofadmission > '2018-07-01' and t2.uhid = '"+ patientCaseUHID+"' AND t1.start_time < t2.dischargeddate) UNION" + " select t3.uhid,t3.start_time,t3.creationtime,t3.peep as peep_device, t3.pip as pip_device,t3.map as map_device ,t3.tidalvol as tidalvol_device, t3.minvol as minvol_device,t3.ti as ti_device,t3.fio2 as fio2_device FROM "+schemaName+".device_ventilator_detail AS t3 LEFT JOIN "+schemaName+".baby_detail AS t4 ON t3.uhid=t4.uhid WHERE (t4.dischargestatus = '"+caseType+"' AND t4.dateofadmission > '2018-07-01' and t4.uhid = '"+ patientCaseUHID+"' AND t3.start_time < t4.dischargeddate) ;")
         cols_vent = list(map(lambda x: x[0], cur_vent.description))
         ventilator_cont = pd.DataFrame(cur_vent.fetchall(),columns=cols_vent)
         test_vent = ventilator_cont.drop_duplicates(subset=['uhid','start_time'],keep='first')
@@ -761,10 +808,30 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
         qw['sys_bp'] = qw.apply(lambda x: unionDeviceNurseBP(x['nurse_sys_bp'], x['device_sys_bp'], x['systibp'], x['nbp_s']), axis=1)
         qw['dia_bp'] = qw.apply(lambda x: unionDeviceNurseBP(x['nurse_diast_bp'], x['device_dia_bp'], x['diastibp'], x['nbp_d']), axis=1)
     
-        #Taking union of HR/PR of Device
-        qw['heartrate'] = qw.apply(lambda x: unionHeartPulseRate(x['heartrate_test'], x['pulserate']), axis=1)
+        #Taking union of HR/PR of Device and Nurse
+        qw['heartrate'] = qw.apply(lambda x: unionHeartPulseRate(x['heartrate_test'], x['pulserate'], x['nurse_heartrate'], x['nurse_pulserate']), axis=1)
 
-        return qw
+        #Taking UNION of ventilator data for nurses and device
+        cur3 = con.cursor()
+        cur3.execute("SELECT t1.uhid,t1.entrydate,t1.pip as pip_nurse,t1.peep_cpap as peep_cpap_nurse,t1.fio2 as fio2_nurse, t1.map as map_nurse ,t1.tidal_volume as tidal_volume_nurse ,t1.minute_volume as minute_volume_nurse ,t1.ti as ti_nurse FROM "+schemaName+".nursing_ventilaor AS t1 where t1.uhid = '"+patientCaseUHID+"'")
+        cols3 = list(map(lambda x: x[0], cur3.description))
+        nv = pd.DataFrame(cur3.fetchall(),columns=cols3)
+        nv.drop_duplicates(subset=['uhid','entrydate'],keep='first',inplace=True)
+        nv['hour'] = nv.entrydate.apply(split_hour)
+        qw.uhid = qw.uhid.astype(str)
+        s1 = pd.merge(qw,nv,on = ['uhid','hour'], how='left')
+
+        s1['pip'] = s1.apply(lambda x: unionVentilator(x['pip_device'], x['pip_nurse']), axis=1)
+        s1['peep'] = s1.apply(lambda x: unionVentilator(x['peep_device'], x['peep_cpap_nurse']), axis=1)
+        s1['fio2'] = s1.apply(lambda x: unionVentilator(x['fio2_device'], x['fio2_nurse']), axis=1)
+        s1['map'] = s1.apply(lambda x: unionVentilator(x['map_device'], x['map_nurse']), axis=1)
+        s1['tidalvol'] = s1.apply(lambda x: unionVentilator(x['tidalvol_device'], x['tidal_volume_nurse']), axis=1)
+        s1['minvol'] = s1.apply(lambda x: unionVentilator(x['minvol_device'], x['minute_volume_nurse']), axis=1)
+        s1['ti'] = s1.apply(lambda x: unionVentilator(x['ti_device'], x['ti_nurse']), axis=1)
+
+
+
+        return s1
     except Exception as e:
         print('Exception in monitor ventilator', e)
         PrintException()
@@ -948,15 +1015,28 @@ def forwardFillHDPData(qw):
         # Next is data fill step
         print ('data preparation forward filling started')    
         qw['heartrate'] = qw['heartrate'].fillna(method='ffill',limit=5)
-        qw['ecg_resprate'].fillna(method='ffill',limit=5)
+        qw['ecg_resprate'] = qw['ecg_resprate'].fillna(method='ffill',limit=5)
         qw['spo2'] = qw['spo2'].fillna(method='ffill',limit=5)
-        qw['peep'].fillna(method='ffill')
-        qw['pip'].fillna(method='ffill')
-        qw['map'].fillna(method='ffill')
-        qw['tidalvol'].fillna(method='ffill')
-        qw['minvol'].fillna(method='ffill')
-        qw['ti'].fillna(method='ffill')
-        qw['fio2'].fillna(method='ffill')
+
+        qw['se_heartrate'] = qw['se_heartrate'].fillna(method='ffill',limit=5)
+        qw['df_heartrate'] = qw['df_heartrate'].fillna(method='ffill',limit=5)
+        qw['adf_heartrate'] = qw['adf_heartrate'].fillna(method='ffill',limit=5)
+        qw['mean_heartrate'] = qw['mean_heartrate'].fillna(method='ffill',limit=5)
+        qw['var_heartrate'] = qw['var_heartrate'].fillna(method='ffill',limit=5)
+
+        qw['se_spo2'] = qw['se_spo2'].fillna(method='ffill',limit=5)
+        qw['df_spo2'] = qw['df_spo2'].fillna(method='ffill',limit=5)
+        qw['adf_spo2'] = qw['adf_spo2'].fillna(method='ffill',limit=5)
+        qw['mean_spo2'] = qw['mean_spo2'].fillna(method='ffill',limit=5)
+        qw['var_spo2'] = qw['var_spo2'].fillna(method='ffill',limit=5)
+
+        qw['peep'] = qw['peep'].fillna(method='ffill')
+        qw['pip'] = qw['pip'].fillna(method='ffill')
+        qw['map'] = qw['map'].fillna(method='ffill')
+        qw['tidalvol'] = qw['tidalvol'].fillna(method='ffill')
+        qw['minvol'] = qw['minvol'].fillna(method='ffill')
+        qw['ti'] = qw['ti'].fillna(method='ffill')
+        qw['fio2'] = qw['fio2'].fillna(method='ffill')
         qw['abdomen_girth'].fillna(method='ffill')
         qw['urine'].fillna(method='ffill')
         qw['stool_day_total'].fillna(method='ffill')
@@ -973,6 +1053,12 @@ def forwardFillHDPData(qw):
         qw['mean_bp'] = qw['mean_bp'].fillna(method='ffill')
         qw['sys_bp'] = qw['sys_bp'].fillna(method='ffill')
         qw['dia_bp'] = qw['dia_bp'].fillna(method='ffill')
+
+
+
+
+
+
         return qw
 def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
     try:      
