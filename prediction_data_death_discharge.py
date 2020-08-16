@@ -13,12 +13,6 @@ from math import *
 import random
 #from prediction_lrm import *
 
-def process_spo2(outcome):
-    if outcome == 0:
-        return random.randint(90, 100)
-    else:
-        return random.randint(50, 80)
-
 def splittingSets(dfCase,final_df):
 
     #Calculating the count of every UHID
@@ -441,16 +435,9 @@ cont  = ['se_heartrate','df_heartrate','adf_heartrate','mean_heartrate','var_hea
 #cont  = ['spo2', 'heartrate', 'se_heartrate','df_heartrate','adf_heartrate','mean_heartrate',
 #            'var_heartrate','se_spo2','df_spo2','adf_spo2','mean_spo2','var_spo2', 
 #            'dischargestatus',  'uhid']
+preparedData.to_csv('lstm_analysis.csv')
 #preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
-
-preparedData['spo2_processed'] = preparedData.apply(lambda x: process_spo2(x['dischargestatus']), axis=1)
-    
-checkspo2 = preparedData[preparedData.dischargestatus == 0]
-print("spo2_processed testing discharge", checkspo2.spo2_processed.unique())
-
-checkspo2 = preparedData[preparedData.dischargestatus == 1]
-print("spo2_processed testing death", checkspo2.spo2_processed.unique())
 
 for i in range(1):
     trainingSet,testingSet = prepareTrainTestSet(preparedData)
