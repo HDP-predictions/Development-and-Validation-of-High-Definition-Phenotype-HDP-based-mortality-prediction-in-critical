@@ -176,14 +176,15 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
                 deathOrDischargeCase = 'Death_Cases'
             elif (x.iloc[0].dischargestatus == 0):
                 deathOrDischargeCase = 'Discharge_Cases'
-            y_pred = np.array(x['y_pred']).flatten()
-            y_df = y_pred
             rcParams['figure.figsize'] = 20, 6
             if not(hdpAX is None) :
                 currentFigure = hdpAX.get_figure()
-                #print('currentFigure=',currentFigure)
                 axes = currentFigure.gca()
                 sns.set(font_scale = 2)
+            if 'y_pred' in x.columns:
+                y_pred = np.array(x['y_pred']).flatten()
+                y_df = y_pred
+                #print('currentFigure=',currentFigure)
                 #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
                 #print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
                 #hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
@@ -195,7 +196,7 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
                 axes.set_ylabel('HDP Mortality Probability')
                 axes.set_ylim([0,1])       
                 axes.set_yticks((0.20,0.40,0.50,0.60,0.80))
-                currentFigure.savefig(path+'/'+deathOrDischargeCase+'/'+str(i)+'.png',dpi = 300)
+            currentFigure.savefig(path+'/'+deathOrDischargeCase+'/'+str(i)+'.png',dpi = 300)
         return True
     except Exception as e:
         print ('Exception',e)
