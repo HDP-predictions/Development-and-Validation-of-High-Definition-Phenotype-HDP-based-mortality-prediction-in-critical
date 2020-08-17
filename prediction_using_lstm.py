@@ -352,6 +352,14 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         cf_a = []
         fi_a = []
         a = []
+
+        f_training = []
+        i_training = []
+        c_training = []
+        ci_training = []
+        cf_training = []
+        fi_training = []
+        a_training = []
         #reduced 2 for uhid and dischargestatus, 1 extra for hour_series - temporary testing
         lengthOfFixed = len(fixed) - 2
         #reduced 2 for uhid and dischargestatus
@@ -366,6 +374,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         print('total length of gd=',len(gd),'gd count',gd.count())
         an = lstm_model(lengthOfFixed,gd,hdpPlotdict,'fixed',trainingSetgd,testingSetgd)
         f_a.append(an[0])
+        f_training.append(an[1])
         print('-----AN-------',an)
         print('---------fixed----------',f_a)
         print(mean_confidence_interval(an[0]))
@@ -376,6 +385,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         testingSetgd = testingSet[inter]
         an = lstm_model(lengthOfIntermittent,gd,lstm_model,'inter',trainingSetgd,testingSetgd)
         i_a.append(an[0])
+        i_training.append(an[1])
         print('inter',i_a)
         print(mean_confidence_interval(an[0]))
         """
@@ -388,6 +398,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         #print('---------------AFTER CHECK of SPO2 =-9999--------------')
         an = lstm_model(lengthOfContinuous,gd,hdpPlotdict,'cont',trainingSetgd,testingSetgd)
         c_a.append(an[0])
+        c_training.append(an[1])
         print('----------c_a----------->',c_a)
         visualizeDataFrameDataset(gd,'cont')    
         print(mean_confidence_interval(an[0]))
@@ -402,6 +413,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'cont_inter',trainingSetgd,testingSetgd)
         ci_a.append(an[0])
         print('cont_inter',ci_a)
+        ci_training.append(an[1])
         print(mean_confidence_interval(an[0]))
         #---------------FIXED+INTER------------------
         fixed_inter = list(set(fixed+inter))
@@ -410,6 +422,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         testingSetgd = testingSet[fixed_inter]
         an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,hdpPlotdict,'fixed_inter',trainingSetgd,testingSetgd)
         fi_a.append(an[0])
+        fi_training.append(an[1])
         print('fixed_inter',fi_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED------------------
@@ -421,6 +434,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         gd = gd[gd["spo2"] != -999]        
         an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,hdpPlotdict,'cont_fixed',trainingSetgd,testingSetgd)
         cf_a.append(an[0])
+        cf_training.append(an[1])
         print('cont_fixed',cf_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED+INTER------------------
@@ -432,6 +446,10 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         gd = gd[gd["spo2"] != -999]        
         an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'all',trainingSetgd,testingSetgd)
         a.append(an[0])
+        a_training.append(an[1])
+
+        print('-------Testing Results------------')
+
         print('all_cols',a)
         print(mean_confidence_interval(an[0]))
         print('Fixed')
@@ -450,6 +468,27 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         print(mean_confidence_interval(list(itertools.chain(*cf_a))))
         print('All')
         print(mean_confidence_interval(list(itertools.chain(*a))))
+
+
+        print('-------Training Results------------')
+
+        
+        print('Fixed')
+        print(mean_confidence_interval(list(itertools.chain(*f_training))))
+        print('Inter')
+        print(mean_confidence_interval(list(itertools.chain(*i_training))))
+        
+        print('Cont')
+        print(mean_confidence_interval(list(itertools.chain(*c_training))))
+        
+        print('Cont+inter')
+        print(mean_confidence_interval(list(itertools.chain(*ci_training))))
+        print('Fixed+Inter')
+        print(mean_confidence_interval(list(itertools.chain(*fi_training))))
+        print('Cont+Fixed')
+        print(mean_confidence_interval(list(itertools.chain(*cf_training))))
+        print('All')
+        print(mean_confidence_interval(list(itertools.chain(*a_training))))
         """
         return True
     except Exception as e:
