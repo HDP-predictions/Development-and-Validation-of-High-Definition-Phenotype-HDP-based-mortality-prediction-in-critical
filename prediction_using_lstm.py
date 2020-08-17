@@ -374,7 +374,6 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         lengthOfIntermittent = len(inter) - 2
         #reduced 2 for uhid and dischargestatus
         lengthOfContinuous = len(cont) - 2
-        f_training.append(an[1])
         """
         #---------------FIXED------------------
         gd = gw[fixed]
