@@ -6,6 +6,12 @@ import numpy as np
 import psycopg2
 import math
 from datetime import timedelta
+from datetime import datetime
+import datetime
+from entropy import sample_entropy
+import nolds
+from statsmodels.tsa.stattools import adfuller
+from scipy.stats import pearsonr
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -235,6 +241,129 @@ def range_finder(x):
     fractional = (x/15.0) - math.floor(x/15.0)
     return int(round(fractional*15))
 
+def unionVentilator(deviceData,nurseData):
+    deviceValue = True
+    if(deviceData != None and deviceData != ''):
+        x = float(deviceData)
+        if(math.isnan(x)):
+            deviceValue = False
+    else:
+        deviceValue = False
+
+    if deviceValue == True:
+        return deviceData
+    else:
+        nurseValue = True
+        if(nurseData != None and nurseData != ''):
+            x = float(nurseData)
+            if(math.isnan(x)):
+                nurseValue = False
+        else:
+            nurseValue = False
+
+        if nurseValue == True:
+            return nurseData
+        else:
+            return np.nan
+
+def unionHeartPulseRate(hr,pr,nurse_hr,nurse_pr):
+
+    hrValue = True
+    if(hr != None and hr != ''):
+        x = float(hr)
+        if(math.isnan(x)):
+            hrValue = False
+    else:
+        hrValue = False
+
+    if hrValue == True:
+        return hr
+    else:
+        prValue = True
+        if(pr != None and pr != ''):
+            x = float(pr)
+            if(math.isnan(x)):
+                prValue = False
+        else:
+            prValue = False
+
+        if prValue == True:
+            return pr
+        else:
+            hrValue = True
+            if(nurse_hr != None and nurse_hr != ''):
+                x = float(nurse_hr)
+                if(math.isnan(x)):
+                    hrValue = False
+            else:
+                hrValue = False
+
+            if hrValue == True:
+                return nurse_hr
+            else:
+                prValue = True
+                if(nurse_pr != None and nurse_pr != ''):
+                    x = float(nurse_pr)
+                    if(math.isnan(x)):
+                        prValue = False
+                else:
+                    prValue = False
+
+                if prValue == True:
+                    return nurse_pr
+                else:
+                    return np.nan
+
+def unionDeviceNurseBP(nurseBp,deviceBp,nurseIbp,deviceIbp):
+
+    #print(nurseBp,deviceBp,nurseIbp,deviceIbp)
+    #Check Nurse BP
+    nurseBpValue = True
+    if(nurseBp != None and nurseBp != ''):
+        x = float(nurseBp)
+        if(math.isnan(x)):
+            nurseBpValue = False
+    else:
+        nurseBpValue = False
+
+    if nurseBpValue == True:
+        return nurseBp
+    else:
+        nurseBpValue = True
+        if(deviceBp != None and deviceBp != ''):
+            x = float(deviceBp)
+            if(math.isnan(x)):
+                nurseBpValue = False
+        else:
+            nurseBpValue = False
+
+        if nurseBpValue == True:
+            return deviceBp
+        else:
+            nurseBpValue = True
+            if(nurseIbp != None and nurseIbp != ''):
+                x = float(nurseIbp)
+                if(math.isnan(x)):
+                    nurseBpValue = False
+            else:
+                nurseBpValue = False
+
+            if nurseBpValue == True:
+                return nurseIbp
+            else:
+                nurseBpValue = True
+                if(deviceIbp != None and deviceIbp != ''):
+                    x = float(deviceIbp)
+                    if(math.isnan(x)):
+                        nurseBpValue = False
+                else:
+                    nurseBpValue = False
+
+                if nurseBpValue == True:
+                    return deviceIbp
+                else:
+                    return np.nan
+
 def in_out(x):
     try:          
         if not(x is None) and (x == 'Out Born'):
@@ -263,7 +392,7 @@ def read_prepare_data(con, patientCaseUHID,caseType,conditionCase,folderName):
         print('Data prepared now for uhid=', patientCaseUHID,'  length of file',len(pwData))    
         return fileName, pwData    
     except Exception as e:
-        print('Exception in data preparation', e)
+        print('Exception in read_prepare_data', e)
         PrintException()
         return None
 
@@ -436,7 +565,7 @@ def addTemperatureRBSData(con,schemaName,patientCaseUHID,ss):
         print ('data preparation vitals - continuous data started')    
 
         cur3 = con.cursor()
-        cur3.execute("SELECT t1.uhid,t1.entrydate,t1.rbs,t1.skintemp,t1.centraltemp  FROM "+schemaName+".nursing_vitalparameters AS t1 where t1.uhid = '"+patientCaseUHID+"'")
+        cur3.execute("SELECT t1.uhid,t1.entrydate,t1.rbs,t1.skintemp,t1.centraltemp, t1.syst_bp as nurse_sys_bp,t1.diast_bp as nurse_diast_bp,t1.mean_bp as nurse_mean_bp,t1.meanibp,t1.systibp,t1.diastibp,t1.hr_rate as nurse_heartrate,t1.pulserate as nurse_pulserate FROM "+schemaName+".nursing_vitalparameters AS t1 where t1.uhid = '"+patientCaseUHID+"'")
         cols3 = list(map(lambda x: x[0], cur3.description))
         nv = pd.DataFrame(cur3.fetchall(),columns=cols3)
 
@@ -560,15 +689,93 @@ def manageStoolAbdominalGirthAndForwardFill(s4):
         print('Total number of columns in  manageStoolAbdominalGirthAndForwardFill='+str(len(final.columns)))              
         return final
     except Exception as e:
-        print('Exception in data preparation', e)
+        print('Exception in manageStoolAbdominalGirthAndForwardFill', e)
         PrintException()
         return s4
 
+def manageRespSupport(con,schemaName,caseType,patientCaseUHID,final):
+
+    print('------starting RespSupport values--------')
+    print('Total number of columns in  RespSupportBeforeProcessing='+str(len(final.columns)))
+    #Resp Support only for Invasive Support
+    try:
+        cur = con.cursor()
+        cur.execute("Select t1.rs_vent_type,t1.creationtime,t1.isactive FROM "+schemaName+".respsupport as t1 LEFT JOIN "+schemaName+".baby_detail AS t2 ON t1.uhid=t2.uhid where t1.uhid = '"+ patientCaseUHID+"' and t1.creationtime < t2.dischargeddate order by t1.creationtime")
+        respSupportList = cur.fetchall()
+        isInvasiveGot = False
+        starttime = None
+        endTime = None
+        df = pd.DataFrame()
+        for support in respSupportList:
+            if(support[0] != None):
+                if((("HFO" in support[0]) or ("Mechanical Ventilation" in support[0])) and (isInvasiveGot == False)):
+                    isInvasiveGot = True
+                    starttime = support[1]
+                    starttime = starttime.replace(second=0)
+                elif(isInvasiveGot == True and ((("HFO" not in support[0]) and ("Mechanical Ventilation" not in support[0])) or support[2] == False)):
+                    isInvasiveGot = False
+                    endTime = support[1]
+                    while endTime.timestamp() > starttime.timestamp():
+                        starttimeStr = str(starttime)
+                        x = [{'uhid': patientCaseUHID, 'ref_hour_x': starttimeStr.split("+")[0], 'respsupport':1}]
+
+                        df = df.append(x,ignore_index=True)
+                        starttime += datetime.timedelta(seconds=60)
+
+                    endTime = None
+                    starttime = None
+            elif((support[0] == None or support[2] == False) and isInvasiveGot == True):
+                isInvasiveGot = False
+                endTime = support[1]
+                endTime = endTime.replace(second=0)
+                while endTime.timestamp() > starttime.timestamp():
+                    starttimeStr = str(starttime)
+                    x = [{'uhid': patientCaseUHID, 'ref_hour_x': starttimeStr.split("+")[0], 'respsupport':1}]
+                    
+                    df = df.append(x,ignore_index=True)
+                    starttime += datetime.timedelta(seconds=60)
+
+                endTime = None
+                starttime = None
+
+        #If baby is marked discharged or death without stopping the resp Support
+        if(starttime != None and isInvasiveGot == True):
+            dod = final.dischargeddate[0]
+            while dod.timestamp() > starttime.timestamp():
+                starttimeStr = str(starttime)
+                x = [{'uhid': patientCaseUHID, 'ref_hour_x': starttimeStr.split("+")[0], 'respsupport':1}]
+                
+                df = df.append(x,ignore_index=True)
+                starttime += datetime.timedelta(seconds=60)
+
+        print(len(df))
+
+        if(len(df) > 0):
+            s4 = pd.merge(final,df,on = ['uhid','ref_hour_x'], how='left')
+            s4.drop_duplicates(subset=['uhid','ref_hour_x'],inplace=True)
+
+            #If resp support is nan then fill those rows with 0 indicates that resp support is OFF
+            s4['respsupport'].fillna((0), inplace=True)
+
+            print('Total number of columns in RespSupport ='+str(len(s4.columns)))
+
+            return s4
+        else:
+            final['respsupport'] = 0
+            print('Total number of columns in  RespSupportProcessing='+str(len(final.columns)))
+            return final
+    except Exception as e:
+        print('Exception in Resp Support', e)
+        PrintException()
+        return final
+
 def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,final):
+
+    try:
         #Vital Parameters
         cur1 = con.cursor()
         #combine data of monitor and monitor dump
-        queryStr = "SELECT t11.uhid,t11.starttime,t11.pulserate, t11.ecg_resprate, t11.spo2, t11.heartrate, t21.dischargestatus,t11.mean_bp,t11.sys_bp,t11.dia_bp  FROM "+schemaName+".device_monitor_detail AS t11 LEFT JOIN "+schemaName+".baby_detail AS t21 ON t11.uhid=t21.uhid WHERE (t21.dischargestatus = '"+caseType+"' AND t21.dateofadmission > '2018-07-01' and t21.uhid = '"+ patientCaseUHID+"' AND t11.starttime < t21.dischargeddate)  UNION" + " SELECT t12.uhid,t12.starttime,t12.pulserate, t12.ecg_resprate, t12.spo2, t12.heartrate, t22.dischargestatus,t12.mean_bp,t12.sys_bp,t12.dia_bp  FROM "+schemaName+".device_monitor_detail_dump AS t12 LEFT JOIN "+schemaName+".baby_detail AS t22 ON t12.uhid=t22.uhid WHERE (t22.dischargestatus = '"+caseType+"' AND t22.dateofadmission > '2018-07-01' and t22.uhid = '"+ patientCaseUHID+"' AND t12.starttime < t22.dischargeddate);"
+        queryStr = "SELECT t11.uhid,t11.starttime,t11.pulserate, t11.ecg_resprate, t11.spo2, t11.heartrate as heartrate_test, t21.dischargestatus,t11.mean_bp as device_mean_bp,t11.sys_bp as device_sys_bp,t11.dia_bp as device_dia_bp,t11.nbp_s,t11.nbp_d,t11.nbp_m  FROM "+schemaName+".device_monitor_detail AS t11 LEFT JOIN "+schemaName+".baby_detail AS t21 ON t11.uhid=t21.uhid WHERE (t21.dischargestatus = '"+caseType+"' AND t21.dateofadmission > '2018-07-01' and t21.uhid = '"+ patientCaseUHID+"' AND t11.starttime < t21.dischargeddate)  UNION" + " SELECT t12.uhid,t12.starttime,t12.pulserate, t12.ecg_resprate, t12.spo2, t12.heartrate as heartrate_test, t22.dischargestatus,t12.mean_bp as device_mean_bp,t12.sys_bp as device_sys_bp,t12.dia_bp as device_dia_bp,t12.nbp_s,t12.nbp_d,t12.nbp_m  FROM "+schemaName+".device_monitor_detail_dump AS t12 LEFT JOIN "+schemaName+".baby_detail AS t22 ON t12.uhid=t22.uhid WHERE (t22.dischargestatus = '"+caseType+"' AND t22.dateofadmission > '2018-07-01' and t22.uhid = '"+ patientCaseUHID+"' AND t12.starttime < t22.dischargeddate);"
         cur1.execute(queryStr)
         cols1 = list(map(lambda x: x[0], cur1.description))
         ds = pd.DataFrame(cur1.fetchall(),columns=cols1)
@@ -578,7 +785,7 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
 
         #Ventilator Parameters
         cur_vent = con.cursor()
-        cur_vent.execute("SELECT t1.uhid,t1.start_time,t1.creationtime,t1.peep, t1.pip,t1.map ,t1.tidalvol, t1.minvol,t1.ti,t1.fio2 FROM "+schemaName+".device_ventilator_detail_dump AS t1 LEFT JOIN "+schemaName+".baby_detail AS t2 ON t1.uhid=t2.uhid WHERE (t2.dischargestatus = '"+caseType+"' OR t2.dischargestatus = '"+caseType+"') and t2.uhid = '"+patientCaseUHID+"';")
+        cur_vent.execute("SELECT t1.uhid,t1.start_time,t1.creationtime,t1.peep as peep_device, t1.pip as pip_device,t1.map as map_device ,t1.tidalvol as tidalvol_device, t1.minvol as minvol_device,t1.ti as ti_device,t1.fio2 as fio2_device FROM "+schemaName+".device_ventilator_detail_dump AS t1 LEFT JOIN "+schemaName+".baby_detail AS t2 ON t1.uhid=t2.uhid WHERE (t2.dischargestatus = '"+caseType+"' AND t2.dateofadmission > '2018-07-01' and t2.uhid = '"+ patientCaseUHID+"' AND t1.start_time < t2.dischargeddate) UNION" + " select t3.uhid,t3.start_time,t3.creationtime,t3.peep as peep_device, t3.pip as pip_device,t3.map as map_device ,t3.tidalvol as tidalvol_device, t3.minvol as minvol_device,t3.ti as ti_device,t3.fio2 as fio2_device FROM "+schemaName+".device_ventilator_detail AS t3 LEFT JOIN "+schemaName+".baby_detail AS t4 ON t3.uhid=t4.uhid WHERE (t4.dischargestatus = '"+caseType+"' AND t4.dateofadmission > '2018-07-01' and t4.uhid = '"+ patientCaseUHID+"' AND t3.start_time < t4.dischargeddate) ;")
         cols_vent = list(map(lambda x: x[0], cur_vent.description))
         ventilator_cont = pd.DataFrame(cur_vent.fetchall(),columns=cols_vent)
         test_vent = ventilator_cont.drop_duplicates(subset=['uhid','start_time'],keep='first')
@@ -587,8 +794,8 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
         cont_data = pd.merge(test,test_vent,on=['uhid','date'],how='left',copy=False)
 
         print('Total number of columns in cont_data ='+str(len(cont_data.columns)))             
-       
-        test_cont = cont_data.drop_duplicates(subset=['uhid','starttime','heartrate'],keep='first')
+    
+        test_cont = cont_data.drop_duplicates(subset=['uhid','starttime','heartrate_test'],keep='first')
         test_cont['hour_series'] = test_cont['date'].apply(split_hour)
         test_cont['ref_hour'] = test_cont['hour_series'].apply(to_str)
         final['ref_hour'] = final['hour_series'].apply(to_str)
@@ -596,43 +803,224 @@ def addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,f
         final['cont_time'] = final.ref_hour.apply(con_time_2)
         qw = pd.merge(final,test_cont, on=['uhid','cont_time'],how='left')
 
-        # #Replacing Nan values of BP with minimum value of that day
-        # print(qw.columns)
-        # print(type(qw.hour_series_x))
-        # print(qw.hour_series_x)
-        # qw['day'] = qw['hour_series_x'].apply(split_date_1)
-        # qw['hour_series_x'] = qw['hour_series_x'].apply(to_date)
-        # finalDataSet = pd.DataFrame()
+        #Taking union of Systolic/Diastolic/Mean BP of Device and Nurses Entries
+
+        qw['mean_bp'] = qw.apply(lambda x: unionDeviceNurseBP(x['nurse_mean_bp'], x['device_mean_bp'], x['meanibp'], x['nbp_m']), axis=1)
+        qw['sys_bp'] = qw.apply(lambda x: unionDeviceNurseBP(x['nurse_sys_bp'], x['device_sys_bp'], x['systibp'], x['nbp_s']), axis=1)
+        qw['dia_bp'] = qw.apply(lambda x: unionDeviceNurseBP(x['nurse_diast_bp'], x['device_dia_bp'], x['diastibp'], x['nbp_d']), axis=1)
+    
+        #Taking union of HR/PR of Device and Nurse
+        qw['heartrate'] = qw.apply(lambda x: unionHeartPulseRate(x['heartrate_test'], x['pulserate'], x['nurse_heartrate'], x['nurse_pulserate']), axis=1)
+
+        #Taking UNION of ventilator data for nurses and device
+        cur3 = con.cursor()
+        cur3.execute("SELECT t1.uhid,t1.entrydate,t1.pip as pip_nurse,t1.peep_cpap as peep_cpap_nurse,t1.fio2 as fio2_nurse, t1.map as map_nurse ,t1.tidal_volume as tidal_volume_nurse ,t1.minute_volume as minute_volume_nurse ,t1.ti as ti_nurse FROM "+schemaName+".nursing_ventilaor AS t1 where t1.uhid = '"+patientCaseUHID+"'")
+        cols3 = list(map(lambda x: x[0], cur3.description))
+        nv = pd.DataFrame(cur3.fetchall(),columns=cols3)
+        nv.drop_duplicates(subset=['uhid','entrydate'],keep='first',inplace=True)
+        nv['hour'] = nv.entrydate.apply(split_hour)
+        qw.uhid = qw.uhid.astype(str)
+        s1 = pd.merge(qw,nv,on = ['uhid','hour'], how='left')
+
+        s1['pip'] = s1.apply(lambda x: unionVentilator(x['pip_device'], x['pip_nurse']), axis=1)
+        s1['peep'] = s1.apply(lambda x: unionVentilator(x['peep_device'], x['peep_cpap_nurse']), axis=1)
+        s1['fio2'] = s1.apply(lambda x: unionVentilator(x['fio2_device'], x['fio2_nurse']), axis=1)
+        s1['map'] = s1.apply(lambda x: unionVentilator(x['map_device'], x['map_nurse']), axis=1)
+        s1['tidalvol'] = s1.apply(lambda x: unionVentilator(x['tidalvol_device'], x['tidal_volume_nurse']), axis=1)
+        s1['minvol'] = s1.apply(lambda x: unionVentilator(x['minvol_device'], x['minute_volume_nurse']), axis=1)
+        s1['ti'] = s1.apply(lambda x: unionVentilator(x['ti_device'], x['ti_nurse']), axis=1)
+
+
+
+        return s1
+    except Exception as e:
+        print('Exception in monitor ventilator', e)
+        PrintException()
+        return final
+
+def addDerivativeContinuous(uhidDataSet):
+
+    try:
+        print('-----Starting Derivative Continuous Processing')
+        finalDataSet = uhidDataSet.copy()
+
+        #Getting the Start and Ending Time of the case
+        endTime = pd.to_datetime(uhidDataSet.dischargeddate[0])
+        starttime = pd.to_datetime(uhidDataSet.actual_DOA[0])
+
+        #Retrieving only Non-Nan values of HR
+        uhidDataSet['heartrate'].dropna()
+        uhidDataSet['heartrate'].fillna((-999), inplace=True)
+        final_df_hr = uhidDataSet[uhidDataSet["heartrate"] != -999]
+        final_df_hr['hour_series'] = final_df_hr['ref_hour_x'].apply(to_date)
+        df_hr = pd.DataFrame()
+
+        #Retrieving only Non-Nan values of Spo2
+        uhidDataSet['spo2'].fillna((-999), inplace=True)
+        final_df_spo2 = uhidDataSet[uhidDataSet["spo2"] != -999]
+        final_df_spo2['hour_series'] = final_df_spo2['ref_hour_x'].apply(to_date)
+        df_spo2 = pd.DataFrame()
+
+        corr_spo2_hr = uhidDataSet[((uhidDataSet["heartrate"] != -999) & (uhidDataSet["spo2"] != -999))]
+        corr_spo2_hr['hour_series'] = corr_spo2_hr['ref_hour_x'].apply(to_date)
+        df_corr_spo2_hr = pd.DataFrame()
+
+        initialStartTime = starttime
+
+        starttime += datetime.timedelta(seconds=21600)
+        if(endTime.timestamp() <= starttime.timestamp()):
+            starttime = endTime
         
-        # n = math.ceil(len(qw)/24)+1
-        # start_date = pd.to_datetime(qw['day'].iloc[0]+" " + "08:00:00") - timedelta(hours=24)
-        # for i in range(int(n)):          
-        #     y = qw[(qw['hour_series_x']>=start_date + timedelta(hours=24*i)) & (qw['hour_series_x']<=start_date + timedelta(hours=24*(i+1)))]
-        #     y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
-        #     y['sys_bp'].fillna((y['sys_bp'].min()), inplace=True)
-        #     y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
-        #     finalDataSet =finalDataSet.append(y,ignore_index=True)
+        counter = 0
+        breakCounter = False
+        while endTime.timestamp() >= starttime.timestamp():  
+
+            y = final_df_hr[(final_df_hr['hour_series']>=initialStartTime) & (final_df_hr['hour_series']<=starttime)]
+            y['heartrate'] = y['heartrate'].apply(to_float)
+
+            print("counter------------>",counter)
+            print("len(y)------------>",len(y))
+            print("(y first)------------>",initialStartTime)
+            print("(y last)------------>",starttime)
+            if(len(y) > 2):
+                
+                if(len(y) == 3):
+                    y = y.append(y,ignore_index=True)
+                if(len(y) <= 5):
+                    heartrate_SE = sample_entropy(y.heartrate, order=1, metric='chebyshev')
+                else:
+                    heartrate_SE = sample_entropy(y.heartrate, order=2, metric='chebyshev')
+                
+                heartrate_DFAColumn = nolds.dfa(y.heartrate)
+                heartrate_ADFColumn = adfuller(y.heartrate)[0]
+                heartrate_MeanColumn = np.mean(y.heartrate)
+                heartrate_VarColumn = np.var(y.heartrate)
+
+                #Retrieving again to set the value only for that 6 hrs.
+                y_final = final_df_hr[(final_df_hr['hour_series']>=initialStartTime + timedelta(hours=6*counter)) & (final_df_hr['hour_series']<=starttime)]
+
+                print("counter------------>",counter)
+                print("len(y_final)------------>",len(y_final))
+                print("(y_final first)------------>",initialStartTime)
+                print("(y_final last)------------>",starttime)
 
 
-        return qw
+
+                y_final['se_heartrate'] = heartrate_SE
+                y_final['df_heartrate'] = heartrate_DFAColumn
+                y_final['adf_heartrate'] = heartrate_ADFColumn
+                y_final['mean_heartrate'] = heartrate_MeanColumn
+                y_final['var_heartrate'] = heartrate_VarColumn
+                df_hr = df_hr.append(y_final,ignore_index=True)
+
+            y = final_df_spo2[(final_df_spo2['hour_series']>=initialStartTime) & (final_df_spo2['hour_series']<=starttime)]
+            y['spo2'] = y['spo2'].apply(to_float)
+            if(len(y) > 2):
+                if(len(y) == 3):
+                    y = y.append(y,ignore_index=True)
+                if(len(y) <= 5):
+                    spo2_SE = sample_entropy(y.spo2, order=1, metric='chebyshev')
+                else:
+                    spo2_SE = sample_entropy(y.spo2, order=2, metric='chebyshev')
+                spo2_DFAColumn = nolds.dfa(y.spo2)
+                spo2_ADFColumn = adfuller(y.spo2)[0]
+                spo2_MeanColumn = np.mean(y.spo2)
+                spo2_VarColumn = np.var(y.spo2)
+
+                #Retrieving again to set the value only for that 6 hrs.
+                y_final = final_df_spo2[(final_df_spo2['hour_series']>=initialStartTime + timedelta(hours=6*counter)) & (final_df_spo2['hour_series']<=starttime)]
+                y_final['se_spo2'] = spo2_SE
+                y_final['df_spo2'] = spo2_DFAColumn
+                y_final['adf_spo2'] = spo2_ADFColumn
+                y_final['mean_spo2'] = spo2_MeanColumn
+                y_final['var_spo2'] = spo2_VarColumn
+                df_spo2 = df_spo2.append(y_final,ignore_index=True)
+
+            y = corr_spo2_hr[(corr_spo2_hr['hour_series']>=initialStartTime) & (corr_spo2_hr['hour_series']<=starttime)]
+            y['spo2'] = y['spo2'].apply(to_float)
+            y['heartrate'] = y['heartrate'].apply(to_float)
+            if(len(y) > 2):
+                corr, _ = pearsonr(y['heartrate'], y['spo2'])
+                y_final = corr_spo2_hr[(corr_spo2_hr['hour_series']>=initialStartTime + timedelta(hours=6*counter)) & (corr_spo2_hr['hour_series']<=starttime)]
+                y_final['correlation_hr_spo2'] = corr
+                df_corr_spo2_hr = df_corr_spo2_hr.append(y_final,ignore_index=True)
+            
+
+            #Incrementing after every 6 hrs
+            starttime += datetime.timedelta(seconds=21600)
+            counter = counter + 1
+            if(breakCounter == True):
+                break 
+
+            #For the last chunk of data if the chunk is less than 6 hrs
+            if(endTime.timestamp() <= starttime.timestamp()):
+                starttime = endTime
+                breakCounter = True
+
+        cols_to_use = ['se_heartrate','df_heartrate','adf_heartrate','mean_heartrate','var_heartrate','uhid','ref_hour_x']
+        gd_hr = df_hr[cols_to_use]
+
+        s4 = pd.merge(finalDataSet,gd_hr,on = ['uhid','ref_hour_x'], how='left')
+        s4.drop_duplicates(subset=['uhid','ref_hour_x'],inplace=True)
+
+        cols_to_use = ['se_spo2','df_spo2','adf_spo2','mean_spo2','var_spo2','uhid','ref_hour_x']
+        gd_spo2 = df_spo2[cols_to_use]
+
+        s5 = pd.merge(s4,gd_spo2,on = ['uhid','ref_hour_x'], how='left')
+        s5.drop_duplicates(subset=['uhid','ref_hour_x'],inplace=True)
+
+        cols_to_use = ['correlation_hr_spo2','uhid','ref_hour_x']
+        gd_corr = df_corr_spo2_hr[cols_to_use]
+
+        s6 = pd.merge(s5,gd_corr,on = ['uhid','ref_hour_x'], how='left')
+        s6.drop_duplicates(subset=['uhid','ref_hour_x'],inplace=True)
+
+        print('Total number of columns in  DerivativeContinuousProcessing='+str(len(s5.columns)))
+        print('-----Ending Derivative Continuous Processing')
+
+        return s6
+    except Exception as e:
+        print('Exception in derivative continuous ---------------------------------------', e)
+        PrintException()
+        return uhidDataSet
 
 def manageBPPhysiological(uhidDataSet):
 
-    uhidDataSet['hour_series'] = uhidDataSet['hour_series_x'].apply(to_date)
-    n = math.ceil(len(uhidDataSet)/24)+1
-    start_date = pd.to_datetime(uhidDataSet['day'].iloc[0]+" " + "08:00:00") - timedelta(hours=24)
-    finalDataSet = pd.DataFrame()
-    for inner in range(int(n)): 
+    try:
 
-        y = uhidDataSet[(uhidDataSet['hour_series']>=start_date + timedelta(hours=24*inner)) & (uhidDataSet['hour_series']<=start_date + timedelta(hours=24*(inner+1)))]
-        y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
-        y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
-        y['sys_bp'].fillna((y['sys_bp'].min()), inplace=True)
-        finalDataSet =finalDataSet.append(y,ignore_index=True)
+        print('Start BP Data Imputation')
+        uhidDataSet['hour_series'] = uhidDataSet['hour_series_x'].apply(to_date)
+        n = math.ceil(len(uhidDataSet)/24)+1
+        start_date = pd.to_datetime(uhidDataSet['day'].iloc[0]+" " + "08:00:00") - timedelta(hours=24)
+        finalDataSet = pd.DataFrame()
+        print(type(start_date))
+        for inner in range(int(n)): 
 
-    print('Total number of columns in manageBPPhysiological ='+str(len(finalDataSet.columns)))
+            y = uhidDataSet[(uhidDataSet['hour_series']>=start_date + timedelta(hours=24*inner)) & (uhidDataSet['hour_series']<=start_date + timedelta(hours=24*(inner+1)))]
+            y['mean_bp'].replace('None', np.nan, inplace=True)
+            y.mean_bp.fillna(value=np.nan, inplace=True)
+            y['mean_bp'] = y['mean_bp'].apply(to_float)
+            y['mean_bp'].fillna((y['mean_bp'].min()), inplace=True)
+            
+            y['dia_bp'].replace('None', np.nan, inplace=True)
+            y.dia_bp.fillna(value=np.nan, inplace=True)
+            y['dia_bp'] = y['dia_bp'].apply(to_float)
+            y['dia_bp'].fillna((y['dia_bp'].min()), inplace=True)
+            
+            y['sys_bp'].replace('None', np.nan, inplace=True)
+            y.sys_bp.fillna(value=np.nan, inplace=True)
+            y['sys_bp'] = y['sys_bp'].apply(to_float)
+            y['sys_bp'].fillna((y['sys_bp'].min()), inplace=True)
 
-    return finalDataSet
+            finalDataSet =finalDataSet.append(y,ignore_index=True)
+
+        print('Total number of columns in manageBPPhysiological ='+str(len(finalDataSet.columns)))
+
+        return finalDataSet
+    except Exception as e:
+        print('Exception in derivative continuous ---------------------------------------', e)
+        PrintException()
+        return uhidDataSet
 
 def convertCategoricalToBinary(qw):
         qw['gender'] = qw['gender'].apply(gender)
@@ -646,21 +1034,29 @@ def convertCategoricalToBinary(qw):
 def forwardFillHDPData(qw):
         # Next is data fill step
         print ('data preparation forward filling started')    
-        qw['pulserate'].fillna(method='ffill',limit=5)
-        qw['heartrate'].fillna(method='ffill',limit=5)
-        qw['ecg_resprate'].fillna(method='ffill',limit=5)
-        qw['spo2'].fillna(method='ffill',limit=5)
-        qw['mean_bp'].fillna(method='ffill')
-        qw['sys_bp'].fillna(method='ffill')
-        qw['dia_bp'].fillna(method='ffill')
-        qw['mean_bp'].fillna(method='ffill')
-        qw['peep'].fillna(method='ffill')
-        qw['pip'].fillna(method='ffill')
-        qw['map'].fillna(method='ffill')
-        qw['tidalvol'].fillna(method='ffill')
-        qw['minvol'].fillna(method='ffill')
-        qw['ti'].fillna(method='ffill')
-        qw['fio2'].fillna(method='ffill')
+        qw['heartrate'] = qw['heartrate'].fillna(method='ffill',limit=5)
+        qw['ecg_resprate'] = qw['ecg_resprate'].fillna(method='ffill',limit=5)
+        qw['spo2'] = qw['spo2'].fillna(method='ffill',limit=5)
+
+        qw['se_heartrate'] = qw['se_heartrate'].fillna(method='ffill',limit=5)
+        qw['df_heartrate'] = qw['df_heartrate'].fillna(method='ffill',limit=5)
+        qw['adf_heartrate'] = qw['adf_heartrate'].fillna(method='ffill',limit=5)
+        qw['mean_heartrate'] = qw['mean_heartrate'].fillna(method='ffill',limit=5)
+        qw['var_heartrate'] = qw['var_heartrate'].fillna(method='ffill',limit=5)
+
+        qw['se_spo2'] = qw['se_spo2'].fillna(method='ffill',limit=5)
+        qw['df_spo2'] = qw['df_spo2'].fillna(method='ffill',limit=5)
+        qw['adf_spo2'] = qw['adf_spo2'].fillna(method='ffill',limit=5)
+        qw['mean_spo2'] = qw['mean_spo2'].fillna(method='ffill',limit=5)
+        qw['var_spo2'] = qw['var_spo2'].fillna(method='ffill',limit=5)
+
+        qw['peep'] = qw['peep'].fillna(method='ffill')
+        qw['pip'] = qw['pip'].fillna(method='ffill')
+        qw['map'] = qw['map'].fillna(method='ffill')
+        qw['tidalvol'] = qw['tidalvol'].fillna(method='ffill')
+        qw['minvol'] = qw['minvol'].fillna(method='ffill')
+        qw['ti'] = qw['ti'].fillna(method='ffill')
+        qw['fio2'] = qw['fio2'].fillna(method='ffill')
         qw['abdomen_girth'].fillna(method='ffill')
         qw['urine'].fillna(method='ffill')
         qw['stool_day_total'].fillna(method='ffill')
@@ -674,6 +1070,15 @@ def forwardFillHDPData(qw):
         qw['totalparenteralvolume'].fillna(method='ffill')
         qw['total_intake'].fillna(method='ffill')
         qw['tpn-tfl'].fillna(method='ffill')
+        qw['mean_bp'] = qw['mean_bp'].fillna(method='ffill')
+        qw['sys_bp'] = qw['sys_bp'].fillna(method='ffill')
+        qw['dia_bp'] = qw['dia_bp'].fillna(method='ffill')
+
+
+
+
+
+
         return qw
 def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
     try:      
@@ -711,7 +1116,9 @@ def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
         hdpDataFrame = addParentralAndTotalNutrition(con,schemaName,patientCaseUHID,hdpDataFrame) 
         hdpDataFrame = manageStoolAbdominalGirthAndForwardFill(hdpDataFrame)           
         hdpDataFrame = addPatientMonitorAndVentilatorData(con,schemaName,caseType,patientCaseUHID,hdpDataFrame)
-        #hdpDataFrame = manageBPPhysiological(hdpDataFrame)
+        hdpDataFrame = manageRespSupport(con,schemaName,caseType,patientCaseUHID,hdpDataFrame)    
+        hdpDataFrame = manageBPPhysiological(hdpDataFrame)
+        hdpDataFrame = addDerivativeContinuous(hdpDataFrame)
         hdpDataFrame = convertCategoricalToBinary(hdpDataFrame)
         hdpDataFrame = forwardFillHDPData(hdpDataFrame)
 
@@ -726,7 +1133,7 @@ def prepare_data_modular(con,patientCaseUHID,caseType,conditionCase,folderName):
         print('Ended prepare_data_modular')
         return fileName,hdpDataFrame
     except Exception as e:
-        print('Exception in data preparation', e)
+        print('Exception in prepare_data_modular', e)
         PrintException()
         return None
         

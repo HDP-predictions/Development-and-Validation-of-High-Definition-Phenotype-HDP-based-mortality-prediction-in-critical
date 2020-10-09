@@ -13,12 +13,6 @@ from math import *
 import random
 #from prediction_lrm import *
 
-def process_spo2(outcome):
-    if outcome == 0:
-        return random.randint(90, 100)
-    else:
-        return random.randint(50, 80)
-
 def splittingSets(dfCase,final_df):
 
     #Calculating the count of every UHID
@@ -183,14 +177,14 @@ def prepareTrainTestSet(gd):
         
         #Till here the code can be non-commented when hardcoded for training and testing list
         
-        print('--------------------TRAINING SET BEFORE BALANCE---------------------')
-        print("Death cases" , trainDeath.uhid.unique(), len(trainDeath))
-        print("Discharge cases" , trainDischarge.uhid.unique(),len(trainDischarge))
+        #print('--------------------TRAINING SET BEFORE BALANCE---------------------')
+        #print("Death cases" , trainDeath.uhid.unique(), len(trainDeath))
+        #print("Discharge cases" , trainDischarge.uhid.unique(),len(trainDischarge))
         #testingSet is used for testing (30%)
         #testingSet = ids[train_count:]
-        print('--------------------TESTING SET BEFORE BALANCE----------------------')
-        print("Death cases" , testDeath.uhid.unique(),len(testDeath))
-        print("Discharge cases" , testDischarge.uhid.unique(),len(testDischarge))
+        #print('--------------------TESTING SET BEFORE BALANCE----------------------')
+        #print("Death cases" , testDeath.uhid.unique(),len(testDeath))
+        #print("Discharge cases" , testDischarge.uhid.unique(),len(testDischarge))
 
         #Balancing the data of Discharge and Death. If discharge count is more 
         #then prune extra count from death case and vice-versa
@@ -277,10 +271,10 @@ def prepareTrainTestSet(gd):
                 test = testingSetDeath[testingSetDeath.uhid == sort_orders_testing_death[i][0]]
                 testingSet = testingSet.append(test)
 
-        print(sort_orders_testing_discharge,'sort_orders_testing_discharge')
-        print(sort_orders_training_discharge,'sort_orders_training_discharge')
-        print(sort_orders_training_death,'sort_orders_training_death')
-        print(sort_orders_testing_death,'sort_orders_testing_death')
+        #print(sort_orders_testing_discharge,'sort_orders_testing_discharge')
+        #print(sort_orders_training_discharge,'sort_orders_training_discharge')
+        #print(sort_orders_training_death,'sort_orders_training_death')
+        #print(sort_orders_testing_death,'sort_orders_testing_death')
         #Calculating Death Count
         #death_count = final_df[final_df.dischargestatus == 1]
 
@@ -289,22 +283,22 @@ def prepareTrainTestSet(gd):
         #print(train_count)
         #trainingSet is used for training (70%)
         #trainingSet = ids[0:train_count]
-        print('--------------------TRAINING SET AFTER BALANCE---------------------')
-        print(trainingSet.uhid.unique(), len(trainingSet))
+        #print('--------------------TRAINING SET AFTER BALANCE---------------------')
+        #print(trainingSet.uhid.unique(), len(trainingSet))
         deathTraining = trainingSet[trainingSet.dischargestatus == 1]
-        print("Death cases" , deathTraining.uhid.unique(), len(deathTraining))
+        #print("Death cases" , deathTraining.uhid.unique(), len(deathTraining))
 
         dischargeTraining = trainingSet[trainingSet.dischargestatus == 0]
-        print("Discharge cases" , dischargeTraining.uhid.unique(), len(dischargeTraining))
+        #print("Discharge cases" , dischargeTraining.uhid.unique(), len(dischargeTraining))
         #testingSet is used for testing (30%)
         #testingSet = ids[train_count:]
-        print('--------------------TESTING SET AFTER BALANCE----------------------')
-        print(testingSet.uhid.unique(), len(testingSet))
+        #print('--------------------TESTING SET AFTER BALANCE----------------------')
+        #print(testingSet.uhid.unique(), len(testingSet))
         deathTesting = testingSet[testingSet.dischargestatus == 1]
-        print("Death cases" , deathTesting.uhid.unique(), len(deathTesting))
+        #print("Death cases" , deathTesting.uhid.unique(), len(deathTesting))
 
         dischargeTesting = testingSet[testingSet.dischargestatus == 0]
-        print("Discharge cases" , dischargeTesting.uhid.unique(), len(dischargeTesting))
+        #print("Discharge cases" , dischargeTesting.uhid.unique(), len(dischargeTesting))
   
         return trainingSet,testingSet
     except Exception as e:
@@ -353,9 +347,10 @@ try:
 except Exception as e:
     print(e)
     PrintException()
-#visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
+visualizeDataset(fileName,folderName,patientCaseUHID,typeOfCase)
 """
-#Check how many death cases, as per length of data in death cases build equal number of discharge cases 
+#Check how many death cases, as per length of data in death cases build equal number of discharge cases
+pd.set_option('mode.chained_assignment', None) 
 folderName = ""
 typeOfCase = ""
 deathCase = 1
@@ -434,18 +429,15 @@ inter = ['dischargestatus', 'mean_bp',
        'stool_day_total', 'temp',
        'total_intake', 'totalparenteralvolume',
        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
-       'urine', 'urine_per_hour', 'uhid']
-cont  = ['spo2_processed', 'dischargestatus', 'uhid']
+       'urine', 'urine_per_hour', 'uhid','respsupport']
+# cont  = ['heartrate', 'dischargestatus', 'uhid']
+#cont  = ['se_heartrate','df_heartrate','adf_heartrate','mean_heartrate','var_heartrate','heartrate', 'dischargestatus',  'uhid']
+cont  = ['spo2', 'heartrate', 'se_heartrate','df_heartrate','adf_heartrate','mean_heartrate',
+           'var_heartrate','se_spo2','df_spo2','adf_spo2','mean_spo2','var_spo2', 
+           'dischargestatus',  'uhid','correlation_hr_spo2']
+#preparedData.to_csv('lstm_analysis.csv')
 preparedData = pd.read_csv('lstm_analysis.csv')
 print('Total number of columns in new frame='+str(len(preparedData.columns)))
-
-preparedData['spo2_processed'] = preparedData.apply(lambda x: process_spo2(x['dischargestatus']), axis=1)
-    
-checkspo2 = preparedData[preparedData.dischargestatus == 0]
-print("spo2_processed testing discharge", checkspo2.spo2_processed.unique())
-
-checkspo2 = preparedData[preparedData.dischargestatus == 1]
-print("spo2_processed testing death", checkspo2.spo2_processed.unique())
 
 for i in range(1):
     trainingSet,testingSet = prepareTrainTestSet(preparedData)
