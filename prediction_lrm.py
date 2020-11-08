@@ -102,7 +102,7 @@ def mean_confidence_interval(data, confidence=0.95):
 
 def prepareLRMData(data):
 
-    dg = pd.DataFrame(columns=['uhid','dischargestatus','pulserate_SE','pulserate_DFA','pulserate_ADF','pulserate_Mean','pulserate_Var','ecg_resprate_SE','ecg_resprate_DFA','ecg_resprate_ADF','ecg_resprate_Mean','ecg_resprate_Var',
+    dg = pd.DataFrame(columns=['uhid','dischargestatus','ecg_resprate_SE','ecg_resprate_DFA','ecg_resprate_ADF','ecg_resprate_Mean','ecg_resprate_Var',
                           'spo2_SE','spo2_DFA','spo2_ADF','spo2_Mean','spo2_Var','heartrate_SE','heartrate_DFA','heartrate_ADF','heartrate_Mean','heartrate_Var','peep_SE','peep_DFA','peep_ADF','peep_Mean','peep_Var',
                           'pip_SE','pip_DFA','pip_ADF','pip_Mean','pip_Var','map_SE','map_DFA','map_ADF','map_Mean','map_Var','tidalvol_SE','tidalvol_DFA','tidalvol_ADF','tidalvol_Mean','tidalvol_Var',
                           'minvol_SE','minvol_DFA','minvol_ADF','minvol_Mean','minvol_Var','ti_SE','ti_DFA','ti_ADF','ti_Mean','ti_Var','fio2_SE','fio2_DFA','fio2_ADF','fio2_Mean','fio2_Var','abdomen_girth',
@@ -122,7 +122,7 @@ def prepareLRMData(data):
             t.fillna(t.mean(),inplace=True)
             t.fillna(0,inplace=True)
             #t = t.apply(pd.to_numeric, errors='coerce')
-            dg = dg.append({'uhid':i,'dischargestatus':t['dischargestatus'].iloc[0],'pulserate_SE':sample_entropy(t.pulserate, order=2, metric='chebyshev'),'pulserate_DFA':nolds.dfa(t.pulserate),'pulserate_ADF':adfuller(t.pulserate)[0],'pulserate_Mean':np.nanmean(t.pulserate),'pulserate_Var':np.nanvar(t.pulserate),'ecg_resprate_SE':sample_entropy(t.ecg_resprate, order=2, metric='chebyshev'),'ecg_resprate_DFA':nolds.dfa(t.ecg_resprate),'ecg_resprate_ADF':adfuller(t.ecg_resprate)[0],'ecg_resprate_Mean':np.mean(t.ecg_resprate),'ecg_resprate_Var':np.var(t.ecg_resprate),
+            dg = dg.append({'uhid':i,'dischargestatus':t['dischargestatus'].iloc[0],'ecg_resprate_SE':sample_entropy(t.ecg_resprate, order=2, metric='chebyshev'),'ecg_resprate_DFA':nolds.dfa(t.ecg_resprate),'ecg_resprate_ADF':adfuller(t.ecg_resprate)[0],'ecg_resprate_Mean':np.mean(t.ecg_resprate),'ecg_resprate_Var':np.var(t.ecg_resprate),
                                 'spo2_SE':sample_entropy(t.spo2, order=2, metric='chebyshev'),'spo2_DFA':nolds.dfa(t.spo2),'spo2_ADF':adfuller(t.spo2)[0],'spo2_Mean':np.mean(t.spo2),'spo2_Var':np.var(t.spo2),'heartrate_SE':sample_entropy(t.heartrate, order=2, metric='chebyshev'),'heartrate_DFA':nolds.dfa(t.heartrate),'heartrate_ADF':adfuller(t.heartrate)[0],'heartrate_Mean':np.mean(t.heartrate),'heartrate_Var':np.var(t.heartrate),'peep_SE':sample_entropy(t.peep, order=2, metric='chebyshev'),'peep_DFA':nolds.dfa(t.peep),'peep_ADF':adfuller(t.peep)[0],'peep_Mean':np.mean(t.peep),'peep_Var':np.var(t.peep),
                                 'pip_SE':sample_entropy(t.pip, order=2, metric='chebyshev'),'pip_DFA':nolds.dfa(t.pip),'pip_ADF':adfuller(t.pip)[0],'pip_Mean':np.mean(t.pip),'pip_Var':np.var(t.pip),'map_SE':sample_entropy(t.map, order=2, metric='chebyshev'),'map_DFA':nolds.dfa(t.map),'map_ADF':adfuller(t.map)[0],'map_Mean':np.mean(t.map),'map_Var':np.var(t.map),'tidalvol_SE':sample_entropy(t.tidalvol, order=2, metric='chebyshev'),'tidalvol_DFA':nolds.dfa(t.tidalvol),'tidalvol_ADF':adfuller(t.tidalvol)[0],'tidalvol_Mean':np.mean(t.tidalvol),'tidalvol_Var':np.var(t.tidalvol),
                                 'minvol_SE':sample_entropy(t.minvol, order=2, metric='chebyshev'),'minvol_DFA':nolds.dfa(t.minvol),'minvol_ADF':adfuller(t.minvol)[0],'minvol_Mean':np.mean(t.minvol),'minvol_Var':np.var(t.minvol),'ti_SE':sample_entropy(t.ti, order=2, metric='chebyshev'),'ti_DFA':nolds.dfa(t.ti),'ti_ADF':adfuller(t.ti)[0],'ti_Mean':np.mean(t.ti),'ti_Var':np.var(t.ti),'fio2_SE':sample_entropy(t.fio2, order=2, metric='chebyshev'),'fio2_DFA':nolds.dfa(t.fio2),'fio2_ADF':adfuller(t.fio2)[0],'fio2_Mean':np.mean(t.fio2),'fio2_Var':np.var(t.fio2),'abdomen_girth':np.mean(t.abdomen_girth),
@@ -142,28 +142,32 @@ def prepareLRMData(data):
         except Exception as e:
             print(e,"error")
 
+    dg.to_csv('LRM_all_data.csv')
+
     return dg
 
 def predictionUsingLRM(dg):
     dg = dg.replace([np.inf, -np.inf], np.nan)
 
-    cont = ['ecg_resprate_ADF', 'ecg_resprate_DFA', 'ecg_resprate_Mean',
-        'ecg_resprate_SE', 'ecg_resprate_Var', 'fio2_ADF', 'fio2_DFA',
-        'fio2_Mean', 'fio2_SE', 'fio2_Var', 'heartrate_ADF', 'heartrate_DFA',
-        'heartrate_Mean', 'heartrate_SE', 'heartrate_Var', 
-        'pulserate_ADF', 'pulserate_DFA', 'pulserate_Mean', 'pulserate_SE',
-        'pulserate_Var', 'spo2_ADF', 'spo2_DFA', 'spo2_Mean', 'spo2_SE',
-        'spo2_Var']
+    cont  = ['spo2', 'heartrate', 'se_heartrate','df_heartrate','adf_heartrate','mean_heartrate',
+            'var_heartrate','se_spo2','df_spo2','adf_spo2','mean_spo2','var_spo2','ecg_resprate'
+            'dischargestatus',  'uhid']
 
-    fixed = ['gender', 'birthweight',
-        'birthlength', 'birthheadcircumference', 'inout_patient_status', 'baby_type', 'central_temp',
-        'apgar_onemin', 'apgar_fivemin', 'apgar_tenmin', 'motherage',
-        'conception_type', 'mode_of_delivery', 'steroidname', 'numberofdose',
-        'gestation']
-
-    inter = [ 'central_temp','currentdateheight', 'currentdateweight', 'new_ph', 'rbs', 'stool_day_total','temp', 'total_intake', 'totalparenteralvolume',
-    'peep_DFA','peep_Mean','peep_SE','peep_Var','pip_ADF','pip_DFA','pip_Mean','pip_SE','pip_Var','map_ADF',
-    'map_DFA','map_Mean','map_SE','map_Var','tidalvol_ADF','tidalvol_DFA','tidalvol_Mean','tidalvol_SE','tidalvol_Var','minvol_ADF','minvol_DFA','minvol_Mean','minvol_SE','minvol_Var','ti_ADF','ti_DFA','ti_Mean','ti_SE','ti_Var','fio2_ADF','fio2_DFA','fio2_Mean','fio2_SE','fio2_Var','mean_bp','sys_bp','dia_bp']
+    fixed = ['dischargestatus',  'gender', 'birthweight',
+       'birthlength', 'birthheadcircumference', 'inout_patient_status',
+       'gestationweekbylmp', 'gestationdaysbylmp',
+       'baby_type', 'central_temp', 'apgar_onemin', 'apgar_fivemin',
+       'apgar_tenmin', 'motherage', 'conception_type', 'mode_of_delivery',
+       'steroidname', 'numberofdose', 'gestation','uhid']
+    inter = ['dischargestatus', 'mean_bp',
+        'sys_bp', 'dia_bp', 'peep', 'pip', 'map', 'tidalvol',
+        'minvol', 'ti', 'fio2',
+        'abd_difference_y', 'currentdateheight', 'currentdateweight',
+        'new_ph', 'rbs',
+        'stool_day_total', 'temp',
+        'total_intake', 'totalparenteralvolume',
+        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
+        'urine', 'urine_per_hour', 'uhid','respsupport']
 
     #Continuous
     X = dg[cont]
@@ -240,22 +244,21 @@ def predictionUsingLRM(dg):
 
 def forwardFillData(data): 
 
-    cols_to_use =  ['uhid','pulserate', 'ecg_resprate',
-        'spo2', 'heartrate', 'mean_bp', 'sys_bp', 'dia_bp',
-        'peep', 'pip', 'map', 'tidalvol', 'minvol', 'ti', 'fio2',
-        'abd_difference_y',
-        'abdomen_girth','currentdateheight',
-        'currentdateweight','dischargestatus', 
-        'new_ph', 
-        'rbs',  'stool_day_total', 
-        'temp', 'total_intake', 'totalparenteralvolume',
-        'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
-        'urine','gender', 'birthweight',
-        'birthlength', 'birthheadcircumference', 'inout_patient_status',
-        'gestationweekbylmp', 'gestationdaysbylmp',
-        'baby_type', 'central_temp', 'apgar_onemin', 'apgar_fivemin',
-        'apgar_tenmin', 'motherage', 'conception_type', 'mode_of_delivery',
-        'steroidname', 'numberofdose', 'gestation']
+    cols_to_use =  ['dischargestatus',  'gender', 'birthweight',
+       'birthlength', 'birthheadcircumference', 'inout_patient_status',
+       'gestationweekbylmp', 'gestationdaysbylmp',
+       'baby_type', 'central_temp', 'apgar_onemin', 'apgar_fivemin',
+       'apgar_tenmin', 'motherage', 'conception_type', 'mode_of_delivery',
+       'steroidname', 'numberofdose', 'gestation', 'mean_bp',
+       'sys_bp', 'dia_bp', 'peep', 'pip', 'map', 'tidalvol',
+       'minvol', 'ti', 'fio2',
+       'abd_difference_y', 'currentdateheight', 'currentdateweight',
+       'new_ph', 'rbs',
+       'stool_day_total', 'temp',
+       'total_intake', 'totalparenteralvolume',
+       'tpn-tfl', 'typevalue_Antibiotics', 'typevalue_Inotropes',
+       'urine', 'urine_per_hour', 'uhid','respsupport','spo2', 'heartrate', 'se_heartrate','df_heartrate','adf_heartrate','mean_heartrate',
+        'var_heartrate','se_spo2','df_spo2','adf_spo2','mean_spo2','var_spo2','ecg_resprate']
 
 
 
@@ -269,9 +272,9 @@ def forwardFillData(data):
         x.currentdateheight.fillna(method='ffill',inplace=True)
         x.central_temp.fillna(method='ffill',inplace=True)
         
-        x.abdomen_girth.fillna(method='ffill',inplace=True)
+        #x.abdomen_girth.fillna(method='ffill',inplace=True)
         x.heartrate.fillna(method='ffill',limit=5,inplace=True)
-        x.pulserate.fillna(method='ffill',limit=5,inplace=True)
+        #x.pulserate.fillna(method='ffill',limit=5,inplace=True)
         x.ecg_resprate.fillna(method='ffill',limit=5,inplace=True)
         x.spo2.fillna(method='ffill',limit=5,inplace=True)
         x.mean_bp.fillna(method='ffill',limit=5,inplace=True)
@@ -301,18 +304,18 @@ def forwardFillData(data):
 
     return final_df
 
-def predictLRM(data):
+data = pd.read_csv('lstm_analysis.csv')
 
-    #Forward Filling and Categorical to Binary
-    final_df = forwardFillData(data)
+#Forward Filling and Categorical to Binary
+final_df = forwardFillData(data)
 
-    #Comment this if LRM data is already prepared
-    #dg = prepareLRMData(final_df)
-    #Comment this if LRM data is to be prepared
-    lrm_data = pd.read_csv('LRM_all_data.csv')
+#Comment this if LRM data is already prepared
+lrm_data = prepareLRMData(final_df)
+#Comment this if LRM data is to be prepared
+#lrm_data = pd.read_csv('LRM_all_data.csv')
 
-    #Predicting using LRM
-    predictionUsingLRM(lrm_data)
+#Predicting using LRM
+predictionUsingLRM(lrm_data)
 
 
 
