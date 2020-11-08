@@ -13,15 +13,13 @@ Additional Packages:
 
 -- Supplementary eTable 6: "Comparison of CRIB (12 hours), CRIB II (1 hour) SNAP-II (12 hours), SNAPPE-II (12 hours), NSIS (LRM &LSTM) (48th)hour for predicting death and discharge." is generated from CRIB_eTable_6.ipynb, CRIB_2_eTable_6.ipynb and SNAPPE-2 SNAP-2_eTable_6.ipynb using the files 'crib.csv', 'crib_2.csv' ,'snap.csv' and 'snappe.csv'.
 
--- Supplementary Table 7: "Imputation distribution in intermittent and continuous parameters" is generated from Table_7.ipynb using the file 'data_23_june.csv'
+-- Supplementary Table 7: "Imputation distribution in intermittent and continuous parameters" is generated from Table_7.py using the file 'lstm_analysis.csv'
 
+-- Supplementary Table 8: "Performance of individual continuous parameters using LSTM" is generated from Table_8.py using the file 'lstm_analysis.csv'
 
--- Supplementary Table 8: "Performance of individual continuous parameters using LSTM" is generated from Table_8.ipynb using the file 'data_23_june.csv'
+-- Supplementary Table 9 : "Performance of combination of continuous parameters using LSTM" is generated from Table_9.py using 'lstm_analysis.csv'.
 
--- Supplementary Table 9 : "Performance of combination of continuous parameters using LSTM" is generated from Table_9.csv using 'data_23_june.csv'.
+-- Supplementary Table 10 : "eTable 10: Performance of individual intermittent parameters using LSTM" is generated from Table_10.py using 'lstm_analysis.csv'
 
--- Supplementary Table 10 : "eTable 10: Performance of individual intermittent parameters using LSTM" is generated from Table_10.csv using 'death_new_4.csv' and .'discharge_new_4.csv'
-
-
--- Supplementary Table11: "Performance of individual intermittent parameters with fixed and continuous using LSTM" is generated from Table_11.ipynb using 'data_23_june.csv'.
+-- Supplementary Table11: "Performance of individual intermittent parameters with fixed and continuous using LSTM" is generated from Table_11.py using 'lstm_analysis.csv'.
 
