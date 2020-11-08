@@ -63,6 +63,21 @@ def range_finder(x):
 def make_lstm_visualize(gd,factor,trainingSet,testingSet):
     try:
         print('--------inside make_lstm')
+
+        testingSet.fillna(-999,inplace=True)
+        trainingSet.fillna(-999,inplace=True)
+
+        if(factor != "fixed" and factor != "inter" and factor != "fixed_inter"):
+            if 'heartrate' in trainingSet.columns:
+                print('pass')
+                trainingSet = trainingSet[trainingSet['heartrate']!=-999]
+                if 'se_heartrate' in trainingSet.columns:
+                    trainingSet = trainingSet[trainingSet['se_heartrate'] < 999]
+            if 'heartrate' in testingSet.columns:
+                print('pass')
+                testingSet = testingSet[testingSet['heartrate']!=-999]
+                if 'se_heartrate' in testingSet.columns:
+                    testingSet = testingSet[testingSet['se_heartrate'] < 999]
         
         train = pd.DataFrame(columns=gd.columns)
         ids = trainingSet.uhid.unique()
@@ -71,7 +86,6 @@ def make_lstm_visualize(gd,factor,trainingSet,testingSet):
             x = trainingSet[trainingSet['uhid']==i]
             x = x[range_finder(len(x)):len(x)]
             train = train.append(x,ignore_index=True)
-        train.fillna(-999,inplace=True)
     
 
         test = pd.DataFrame(columns=gd.columns)
@@ -82,7 +96,8 @@ def make_lstm_visualize(gd,factor,trainingSet,testingSet):
             x = testingSet[testingSet['uhid']==i]
             x = x[range_finder(len(x)):len(x)]
             test = test.append(x,ignore_index=True)
-        test.fillna(-999,inplace=True)
+
+        
 
         y_train = train['dischargestatus']
         X_train = train.drop('dischargestatus',axis=1)
@@ -91,42 +106,26 @@ def make_lstm_visualize(gd,factor,trainingSet,testingSet):
 
         y_test = test['dischargestatus']
 
-        print('train uhid length=',len(train.uhid.unique()), ' UHID =', train.uhid.unique())
-        print('test uhid length=',len(test.uhid.unique()), ' UHID =', test.uhid.unique())
+        #print('train uhid length=',len(train.uhid.unique()), ' UHID =', train.uhid.unique())
+        #print('test uhid length=',len(test.uhid.unique()), ' UHID =', test.uhid.unique())
 
         #train.to_csv('train_hdp.csv')
         #test.to_csv('test_hdp.csv')
         #how many rows of machine data is present for death and discharge cases in test and train
         deathTrain = train[train['dischargestatus']==1]
         dischargeTrain = train[train['dischargestatus']==0]
-        print('Train death case  total length =', len(deathTrain))
-        print('Train discharge case  total length =', len(dischargeTrain))
+        #print('Train death case  total length =', len(deathTrain))
+        #print('Train discharge case  total length =', len(dischargeTrain))
     
         #and test['spo2']!=-999
-        if(factor != "fixed" and factor != "inter" and factor != "fixed_inter"):
-            if 'spo2' in deathTrain.columns:
-                print('pass')
-                #deathTrain = deathTrain[deathTrain['spo2']!=-999]
-            if 'spo2' in dischargeTrain.columns:
-                print('pass')
-                #dischargeTrain = dischargeTrain[dischargeTrain['spo2']!=-999]
-            print('Train death case  machine correct length =', len(deathTrain))
-            print('Train discharge case  machine correct length =', len(dischargeTrain))
 
         deathTest = test[test['dischargestatus']==1]
         dischargeTest = test[test['dischargestatus']==0]
-        print('Test death case  total length =', len(deathTest))
-        print('Test discharge case  total length =', len(dischargeTest))
+        #print('Test death case  total length =', len(deathTest))
+        #print('Test discharge case  total length =', len(dischargeTest))
 
-        if(factor != "fixed" and factor != "inter" and factor != "fixed_inter"):
-            if 'spo2' in deathTest.columns:
-                print('pass')
-                #deathTest = deathTest[deathTest['spo2']!=-999]
-            if 'spo2' in dischargeTest.columns:
-                print('pass')
-            #dischargeTest = dischargeTest[dischargeTest['spo2']!=-999]
-            print('Test death case  machine correct length =', len(deathTest))
-            print('Test discharge case  machine correct length =', len(dischargeTest))
+        #print('Test death case  machine correct length =', len(deathTest))
+        #print('Test discharge case  machine correct length =', len(dischargeTest))
 
         X_test = test.drop('dischargestatus',axis=1)
         X_test = X_test.drop('uhid',axis=1)
@@ -153,7 +152,7 @@ def make_lstm_visualize(gd,factor,trainingSet,testingSet):
         ytest1 = np.array(ytest1)
         Xtrain = np.reshape(X_train, (-1, 15, X_train.shape[1]))
         Xtest = np.reshape(X_test, (-1, 15, X_test.shape[1]))
-        return Xtrain,Xtest,ytrain1,ytest1,test
+        return Xtrain,Xtest,ytrain1,ytest1,test,train
     except Exception as e:
             print('Error in make_lstm_visualize method',e)
             PrintException()
@@ -176,14 +175,15 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
                 deathOrDischargeCase = 'Death_Cases'
             elif (x.iloc[0].dischargestatus == 0):
                 deathOrDischargeCase = 'Discharge_Cases'
-            y_pred = np.array(x['y_pred']).flatten()
-            y_df = y_pred
             rcParams['figure.figsize'] = 20, 6
             if not(hdpAX is None) :
                 currentFigure = hdpAX.get_figure()
-                #print('currentFigure=',currentFigure)
                 axes = currentFigure.gca()
                 sns.set(font_scale = 2)
+            if ('y_pred' in x.columns) and (not(hdpAX is None)):
+                y_pred = np.array(x['y_pred']).flatten()
+                y_df = y_pred
+                #print('currentFigure=',currentFigure)
                 #sns.scatterplot(y = y_df[0], x = np.arange(len(y_pred)),linewidth=0, legend='full')
                 #print('case is',deathOrDischargeCase,' y_pred = ',y_pred)
                 #hdpAX.plot(np.arange(len(y_pred)),y_pred, label=deathOrDischargeCase+i)
@@ -195,6 +195,7 @@ def visualizeLSTMOutput(xTestWithUHID,hdpPlotdict):
                 axes.set_ylabel('HDP Mortality Probability')
                 axes.set_ylim([0,1])       
                 axes.set_yticks((0.20,0.40,0.50,0.60,0.80))
+            if not(hdpAX is None) :
                 currentFigure.savefig(path+'/'+deathOrDischargeCase+'/'+str(i)+'.png',dpi = 300)
         return True
     except Exception as e:
@@ -212,114 +213,122 @@ def lstm_model(n,gd,hdpPlotdict,factor,trainingSet,testingSet):
     valLSTM = pd.DataFrame()
     print('-----------Inside lstm model-------------',n,len(gd))
     plt.figure()
-    for iterationCounter in range(1):
+    for iterationCounter in range(5):
         try:
-            print('-----------Iteration No-------------=',iterationCounter)
-            print('-----------gd.uhid-------------=',gd.uhid.unique())
-            print('-----------training.uhid-------------=',len(trainingSet))
-            print('-----------testing.uhid-------------=',len(testingSet))
+            #print('-----------gd.uhid-------------=',gd.uhid.unique())
+            #print('-----------training.uhid-------------=',len(trainingSet))
+            #print('-----------testing.uhid-------------=',len(testingSet))
+            n_dropout = [0.2]
+            for dropout in n_dropout:
+                print('-----------Iteration No-------------=',iterationCounter, '----DROPOUT=',dropout)
+                Xtrain,Xtest,ytrain1,ytest1,xTestWithUHID,xTrainWithUHID = make_lstm_visualize(gd,factor,trainingSet,testingSet)
+                #xTestWithUHID.to_csv('Pre_LSTMDataOutput_'+str(iterationCounter)+'.csv')
 
-            Xtrain,Xtest,ytrain1,ytest1,xTestWithUHID = make_lstm_visualize(gd,factor,trainingSet,testingSet)
-            #Building the LSTM model
+                #Building the LSTM model
 
-            """
-            X = Input(shape=(None, n), name='X')
-            mX = Masking()(X)
-            # X-> BidirectionalLSTM -> MASKING LAYER -> LSTM -> Dense -> y 
-            lstm = Bidirectional(LSTM(units=512,activation='tanh',return_sequences=True,recurrent_dropout=0.5,dropout=0.3))
-            #for timeseries data of varying length - in case one patient has 15 pulse rate values vs the second patient has 10
-            # masking will handle this mismatch of data
-            mX = lstm(mX)
-            
-            L = LSTM(units=128,activation='tanh',return_sequences=False)(mX)
-            y = Dense(1, activation="sigmoid")(L)
-            outputs = [y]
-            inputs = [X]
-            model = Model(inputs,outputs)
+                """
+                X = Input(shape=(None, n), name='X')
+                mX = Masking()(X)
+                # X-> BidirectionalLSTM -> MASKING LAYER -> LSTM -> Dense -> y 
+                lstm = Bidirectional(LSTM(units=512,activation='tanh',return_sequences=True,recurrent_dropout=0.5,dropout=0.3))
+                #for timeseries data of varying length - in case one patient has 15 pulse rate values vs the second patient has 10
+                # masking will handle this mismatch of data
+                mX = lstm(mX)
+                
+                L = LSTM(units=128,activation='tanh',return_sequences=False)(mX)
+                y = Dense(1, activation="sigmoid")(L)
+                outputs = [y]
+                inputs = [X]
+                model = Model(inputs,outputs)
 
-            """
-            #X = Input(shape=(None, n), name='X')
-            model = Sequential()
-            inputNumberNeuron = 512
-            multiplEachLayer = (1)
-            n_steps = 15
-            hiddenLayerNeuron1 = int(multiplEachLayer*inputNumberNeuron)
-            #hiddenLayerNeuron2 = int(multiplEachLayer*hiddenLayerNeuron1)
-            #model.add(LSTM(inputNumberNeuron, activation='tanh', return_sequences=True, input_shape=(15, n)))
-            model.add(Bidirectional(LSTM(inputNumberNeuron, activation='tanh',return_sequences=True), input_shape=(n_steps, n)))
-            #model.add(Dropout(0.4))
-            #model.add(LSTM(hiddenLayerNeuron1,activation='tanh',return_sequences=True))
-            model.add(LSTM(256,activation='tanh'))
-            model.add(Dense(1, activation="sigmoid"))
-            model.summary()
-            model.compile(optimizer='adam', loss='binary_crossentropy',metrics=['accuracy'])
-            #model.compile(loss="binary_crossentropy",optimizer='adam',metrics=['accuracy'])
-            #validation accuracy
-            v_a = []
-            #training accuracy
-            t_a = []
-            #fitting the model
-            #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
-            history = model.fit(Xtrain, ytrain1, batch_size=15 ,validation_split=0.15,epochs=38)
+                """
+                #X = Input(shape=(None, n), name='X')
+                model = Sequential()
+                inputNumberNeuron = 512
+                multiplEachLayer = (1)
+                n_steps = 15
+                hiddenLayerNeuron1 = int(multiplEachLayer*inputNumberNeuron)
+                #hiddenLayerNeuron2 = int(multiplEachLayer*hiddenLayerNeuron1)
+                #model.add(LSTM(inputNumberNeuron, activation='tanh', return_sequences=True, input_shape=(15, n)))
+                model.add(Bidirectional(LSTM(inputNumberNeuron, activation='tanh',return_sequences=True,dropout=dropout), input_shape=(n_steps, n)))
+                #model.add(Dropout(0.4))
+                #model.add(LSTM(hiddenLayerNeuron1,activation='tanh',return_sequences=True))
+                model.add(LSTM(256,activation='tanh',dropout=dropout))
+                model.add(Dense(1, activation="sigmoid"))
+                model.summary()
+                model.compile(optimizer='adam', loss='binary_crossentropy',metrics=['accuracy'])
+                #model.compile(loss="binary_crossentropy",optimizer='adam',metrics=['accuracy'])
+                #validation accuracy
+                v_a = []
+                #training accuracy
+                t_a = []
+                #fitting the model
+                #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
+                history = model.fit(Xtrain, ytrain1, batch_size=15 ,validation_split=0.15,epochs=8)
 
-            trainLSTM[str(iterationCounter)] = history.history['loss']
-            valLSTM[str(iterationCounter)] = history.history['val_loss']
+                trainLSTM[str(iterationCounter)] = history.history['loss']
+                valLSTM[str(iterationCounter)] = history.history['val_loss']
 
-            #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
-            for i in range(len(model.history.history['val_accuracy'])):
-                v_a.append(model.history.history['val_accuracy'][i])
-                t_a.append(model.history.history['accuracy'][i])
-            #predictions
-            y_pred = model.predict(Xtest)
-            #y_pred = y_pred.round()
-            y_test = np.array(ytest1)
-            y_pred = np.array(y_pred)
-            y_test = pd.DataFrame(y_test)
-            y_test = np.array(y_test)
-            #if more than 0.5 then mark as dead, otherwise mark as Discharge
-            def acc(x):
-                if x>0.5:
-                    return 1
-                else:
-                    return 0
-            #y_model is the outcome of test
-            y_model=[]
-            for i in y_pred:
-                y_model.append(acc(i))
-            #y_answer is the actual observation (discharge status) present in the dataset
-            y_answer=[]
-            for j in y_test:
-                y_answer.append(acc(j))
-            #print('y_model',y_model,'y_answer',y_answer)
-            print('------------visualization of output Started------------------')
-            #since in previous operation data of 15 mins was processed as one block, so reconverting the results 
-            #to repeat of 15 mins
-            yNew = np.repeat(y_pred, 15)
-            xTestWithUHID['y_pred'] = yNew
-            visualizeLSTMOutput(xTestWithUHID,hdpPlotdict)
-            xTestWithUHID.to_csv('LSTMDataOutput_'+str(iterationCounter)+'.csv')
-            print('------------visualization of output Done------------------')
-            #append validation and training accuracy from each iteration
-            val_a.append(v_a)
-            train_a.append(t_a)
-            #print(t_a)
-            #print(train_a)
-            #print('--------between t_a & train_a -------------y_answer=',y_answer,' y_pred=',y_pred)
-            #So for all epochs (38 in our cases) the y_pred will be generated and compared with actual observed discharge status to generate 
-            #roc auc curve
-            roc_aoc_s = roc_auc_score(y_answer,y_pred)
-            print('roc_auc_score',roc_aoc_s)
-            auc_roc_inter.append(roc_aoc_s)
-            continue
+                #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
+                for i in range(len(model.history.history['val_accuracy'])):
+                    v_a.append(model.history.history['val_accuracy'][i])
+                    t_a.append(model.history.history['accuracy'][i])
+                #predictions
+                y_pred = model.predict(Xtest)
+                #y_pred = y_pred.round()
+                y_test = np.array(ytest1)
+                y_pred = np.array(y_pred)
+                y_test = pd.DataFrame(y_test)
+                y_test = np.array(y_test)
+                #if more than 0.5 then mark as dead, otherwise mark as Discharge
+                def acc(x):
+                    if x>0.5:
+                        return 1
+                    else:
+                        return 0
+                #y_model is the outcome of test
+                y_model=[]
+                for i in y_pred:
+                    y_model.append(acc(i))
+                #y_answer is the actual observation (discharge status) present in the dataset
+                y_answer=[]
+                for j in y_test:
+                    y_answer.append(acc(j))
+                #print('y_model',y_model,'y_answer',y_answer)
+                print('------------visualization of output Started------------------')
+                #since in previous operation data of 15 mins was processed as one block, so reconverting the results 
+                #to repeat of 15 mins
+                yNew = np.repeat(y_pred, 15)
+                xTestWithUHID['y_pred'] = yNew
+                visualizeLSTMOutput(xTestWithUHID,hdpPlotdict)
+                visualizeLSTMOutput(xTrainWithUHID,hdpPlotdict)
+                xTestWithUHID.to_csv('LSTMDataOutput_'+str(iterationCounter)+'.csv')
+                print('------------visualization of output Done------------------')
+                #append validation and training accuracy from each iteration
+                val_a.append(v_a)
+                train_a.append(t_a)
+                #print(t_a)
+                #print(train_a)
+                #print('--------between t_a & train_a -------------y_answer=',y_answer,' y_pred=',y_pred)
+                #So for all epochs (38 in our cases) the y_pred will be generated and compared with actual observed discharge status to generate 
+                #roc auc curve
+                roc_aoc_s = roc_auc_score(y_answer,y_pred)
+                print('roc_auc_score',roc_aoc_s)
+                auc_roc_inter.append(roc_aoc_s)
+                #HS: For dropout increment iterationCounter
+                #iterationCounter =  iterationCounter + 1
         except Exception as e:
             print('Exception inside lstm_model',iterationCounter,e)
             PrintException()
             continue
     print('-----------Done with lstm model-------------')
     plt.figure()
-    plt.plot(trainLSTM, color='blue', label='train')
-    plt.plot(valLSTM, color='orange', label='validation')
-    plt.title('model train vs validation loss')
+    color_dict = {'0': 'blue', '1': 'red', '2': 'green', '3': 'black', '4': 'orange'}
+    #plt.plot(trainLSTM, color='blue', label='train')
+    trainLSTM.plot(color=[color_dict.get(x, '#333333') for x in trainLSTM.columns])
+    valLSTM.plot(color=[color_dict.get(x, '#333333') for x in valLSTM.columns])
+    #plt.plot(valLSTM, color='orange', label='validation')
+    plt.title('Different iterations train vs validation loss')
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.show()
@@ -334,7 +343,7 @@ def convert_date(x):
 
 def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
     try:
-        print('Inside predictLSTM column count=',gw.columns)
+        #print('Inside predictLSTM column count=',gw.columns)
         #defining the early stopping criteria
         f_a = []
         i_a = []
@@ -343,13 +352,21 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         cf_a = []
         fi_a = []
         a = []
+
+        f_training = []
+        i_training = []
+        c_training = []
+        ci_training = []
+        cf_training = []
+        fi_training = []
+        a_training = []
         #reduced 2 for uhid and dischargestatus, 1 extra for hour_series - temporary testing
         lengthOfFixed = len(fixed) - 2
         #reduced 2 for uhid and dischargestatus
         lengthOfIntermittent = len(inter) - 2
         #reduced 2 for uhid and dischargestatus
         lengthOfContinuous = len(cont) - 2
-        """
+        
         #---------------FIXED------------------
         gd = gw[fixed]
         trainingSetgd = trainingSet[fixed]
@@ -357,6 +374,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         print('total length of gd=',len(gd),'gd count',gd.count())
         an = lstm_model(lengthOfFixed,gd,hdpPlotdict,'fixed',trainingSetgd,testingSetgd)
         f_a.append(an[0])
+        f_training.append(an[1])
         print('-----AN-------',an)
         print('---------fixed----------',f_a)
         print(mean_confidence_interval(an[0]))
@@ -367,32 +385,35 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         testingSetgd = testingSet[inter]
         an = lstm_model(lengthOfIntermittent,gd,lstm_model,'inter',trainingSetgd,testingSetgd)
         i_a.append(an[0])
+        i_training.append(an[1])
         print('inter',i_a)
         print(mean_confidence_interval(an[0]))
-        """
+        
         #---------------CONT------------------
         gd = gw[cont]
         trainingSetgd = trainingSet[cont]
         testingSetgd = testingSet[cont]
         #this will remove all indexes where continuous data is not present
-        #gd = gd[gd["spo2"] != -999]
+        gd = gd[gd["heartrate"] != -999]
         #print('---------------AFTER CHECK of SPO2 =-9999--------------')
         an = lstm_model(lengthOfContinuous,gd,hdpPlotdict,'cont',trainingSetgd,testingSetgd)
         c_a.append(an[0])
+        c_training.append(an[1])
         print('----------c_a----------->',c_a)
         visualizeDataFrameDataset(gd,'cont')    
         print(mean_confidence_interval(an[0]))
-        """
+        
         #---------------CONT+INTER------------------
         cont_inter = list(set(cont+inter))
         gd = gw[cont_inter]
         trainingSetgd = trainingSet[cont_inter]
         testingSetgd = testingSet[cont_inter]
-         #this will remove all indexes where continuous data is not present
-        gd = gd[gd["spo2"] != -999]       
+        #this will remove all indexes where continuous data is not present
+        gd = gd[gd["heartrate"] != -999]       
         an = lstm_model(lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'cont_inter',trainingSetgd,testingSetgd)
         ci_a.append(an[0])
         print('cont_inter',ci_a)
+        ci_training.append(an[1])
         print(mean_confidence_interval(an[0]))
         #---------------FIXED+INTER------------------
         fixed_inter = list(set(fixed+inter))
@@ -401,6 +422,7 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         testingSetgd = testingSet[fixed_inter]
         an = lstm_model(lengthOfFixed+lengthOfIntermittent,gd,hdpPlotdict,'fixed_inter',trainingSetgd,testingSetgd)
         fi_a.append(an[0])
+        fi_training.append(an[1])
         print('fixed_inter',fi_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED------------------
@@ -409,9 +431,10 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         trainingSetgd = trainingSet[cont_fixed]
         testingSetgd = testingSet[cont_fixed]
         #this will remove all indexes where continuous data is not present
-        gd = gd[gd["spo2"] != -999]        
+        gd = gd[gd["heartrate"] != -999]        
         an = lstm_model(lengthOfFixed+lengthOfContinuous,gd,hdpPlotdict,'cont_fixed',trainingSetgd,testingSetgd)
         cf_a.append(an[0])
+        cf_training.append(an[1])
         print('cont_fixed',cf_a)
         print(mean_confidence_interval(an[0]))
         #---------------CONT+FIXED+INTER------------------
@@ -420,19 +443,19 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         trainingSetgd = trainingSet[all_cols]
         testingSetgd = testingSet[all_cols]
         #this will remove all indexes where continuous data is not present
-        gd = gd[gd["spo2"] != -999]        
+        gd = gd[gd["heartrate"] != -999]        
         an = lstm_model(lengthOfFixed+lengthOfIntermittent+lengthOfContinuous,gd,hdpPlotdict,'all',trainingSetgd,testingSetgd)
         a.append(an[0])
-        print('all_cols',a)
-        print(mean_confidence_interval(an[0]))
+        a_training.append(an[1])
+
+        print('-------Testing Results------------')
+   
         print('Fixed')
         print(mean_confidence_interval(list(itertools.chain(*f_a))))
         print('Inter')
         print(mean_confidence_interval(list(itertools.chain(*i_a))))
-        """
         print('Cont')
         print(mean_confidence_interval(list(itertools.chain(*c_a))))
-        """
         print('Cont+inter')
         print(mean_confidence_interval(list(itertools.chain(*ci_a))))
         print('Fixed+Inter')
@@ -441,7 +464,26 @@ def predictLSTM(gw, fixed, cont, inter,hdpPlotdict,trainingSet,testingSet):
         print(mean_confidence_interval(list(itertools.chain(*cf_a))))
         print('All')
         print(mean_confidence_interval(list(itertools.chain(*a))))
-        """
+
+
+        print('-------Training Results------------')
+
+        
+        print('Fixed')
+        print(mean_confidence_interval(list(itertools.chain(*f_training))))
+        print('Inter')
+        print(mean_confidence_interval(list(itertools.chain(*i_training))))
+        print('Cont')
+        print(mean_confidence_interval(list(itertools.chain(*c_training))))
+        print('Cont+inter')
+        print(mean_confidence_interval(list(itertools.chain(*ci_training))))
+        print('Fixed+Inter')
+        print(mean_confidence_interval(list(itertools.chain(*fi_training))))
+        print('Cont+Fixed')
+        print(mean_confidence_interval(list(itertools.chain(*cf_training))))
+        print('All')
+        print(mean_confidence_interval(list(itertools.chain(*a_training))))
+        
         return True
     except Exception as e:
         print('Exception in Prediction', e)
