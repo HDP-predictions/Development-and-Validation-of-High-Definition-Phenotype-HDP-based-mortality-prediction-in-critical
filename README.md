@@ -7,7 +7,7 @@ Additional Packages:
 
 -- Table 2: "Baseline characteristics of the population" is generated from Baseline_Table_2.ipynb using 'baseline_20th_june.csv'
 
--- Table 3: "Ablation experiment for contribution of fixed, intermittent and continuous during mortality prediction" is generated from LSTM_ablation_Table_3.py using 'data_23_june.csv' and Table_3_LRM.ipynb 'data_stat_2.csv'. 
+-- Table 3a): "Ablation experiment for contribution of fixed, intermittent and continuous during mortality prediction" LSTM is generated from data_preparation.py,prediction_data_death_discharge.py, prediction_using_lstm.py,prediction_lrm.py using 'lstm_analysis.csv' and 'death_discharge_set.csv'. 
 
 -- Table 4: "Summary of NSIS (LRM & LSTM) mortality detection performance at different time points" is generated from Table_4.ipynb for LSTM using the files 'LSTM_X1_hour.csv' and 'LSTM_X2_week.csv'(X1 = 1,6,12,48 & X2=1,2,3,4) and Table_4_LRM.ipynb using the files 'LRM_X1_hour.csv' and 'LRM_X2_week.csv'. (X1 = 1,6,12,48 & X2=1,2,3,4) 
 
