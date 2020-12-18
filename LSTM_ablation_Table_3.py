@@ -18,7 +18,8 @@ import scipy.stats
 from prettytable import PrettyTable
 import math
 import itertools
-
+from sklearn.metrics import classification_report, confusion_matrix, average_precision_score
+from random import shuffle
 
 #defining the early stopping criteria
 es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weights=True,patience=3)
@@ -27,9 +28,9 @@ es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,restore_best_weight
 # In[ ]:
 
 
-gs = pd.read_csv('data_23_june.csv')
-gs.drop('Unnamed: 0',axis=1,inplace=True)
-gs.drop('Unnamed: 0.1',axis=1,inplace=True)
+gs_full = pd.read_csv('/part1/data_23_june.csv')
+gs_full.drop('Unnamed: 0',axis=1,inplace=True)
+gs_full.drop('Unnamed: 0.1',axis=1,inplace=True)
 print("111")
 
 # In[ ]:
@@ -59,6 +60,23 @@ def range_finder(x):
 cont = ['pulserate',
        'ecg_resprate', 'spo2', 'heartrate', 'dischargestatus', 'uhid']
 
+gs = pd.DataFrame()
+death_babies = gs_full[gs_full.dischargestatus == 1]
+discharge_babies = gs_full[gs_full.dischargestatus == 0]
+
+ids_discharge = discharge_babies.uhid.unique()
+shuffle(ids_discharge)
+
+gs = gs.append(death_babies)
+
+for k in range (0,15):
+    id_uhid = ids_discharge[k]
+    discharge_set = discharge_babies[discharge_babies.uhid == id_uhid]
+    gs = gs.append(discharge_set)
+    print(len(discharge_set))
+
+print(gs.uhid.unique())
+
 gd = gs[cont]
 
 def make_lstm(gd):
@@ -76,7 +94,7 @@ def make_lstm(gd):
 
 
     train = final_df[:split_70(len(final_df))]
-    test = final_df[split_70(len(final_df)):]
+    test = final_df[range_finder(len(final_df)):]
 
 
     # In[ ]:
@@ -119,7 +137,8 @@ def make_lstm(gd):
 
     ytrain1 = np.array(ytrain1)
     ytest1 = np.array(ytest1)
-
+    print(X_train.shape)
+    print(X_test.shape)
     Xtrain = np.reshape(X_train, (-1, 15, X_train.shape[1]))
     Xtest = np.reshape(X_test, (-1, 15, X_test.shape[1]))
 
@@ -131,6 +150,8 @@ def lstm_model(n,xtrain,xtest,ytrain1,ytest1):
     auc_roc_inter = []
     val_a = []
     train_a = []
+    y_answer_final = []
+    y_model_final = []
 
     for i in range(2):
         #Building the LSTM model
@@ -148,7 +169,7 @@ def lstm_model(n,xtrain,xtest,ytrain1,ytest1):
         v_a = []
         t_a = []
         #fitting the model
-        model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
+        model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=2,callbacks=[es])
         #history = model.fit(Xtrain, ytrain1, batch_size=60 ,validation_split=0.15,epochs=38,callbacks=[es])
         for i in range(len(model.history.history['val_accuracy'])):
             v_a.append(model.history.history['val_accuracy'][i])
@@ -173,7 +194,8 @@ def lstm_model(n,xtrain,xtest,ytrain1,ytest1):
         y_answer=[]
         for j in y_test:
             y_answer.append(acc(j))
-
+        y_model_final.append(y_model)
+        y_answer_final.append(y_answer)
 
         print(i)
 
@@ -181,7 +203,7 @@ def lstm_model(n,xtrain,xtest,ytrain1,ytest1):
         train_a.append(t_a)
         auc_roc_inter.append(roc_auc_score(y_answer,y_pred))
         continue
-    return auc_roc_inter,list(itertools.chain(*val_a)),list(itertools.chain(*train_a))
+    return auc_roc_inter,list(itertools.chain(*val_a)),list(itertools.chain(*train_a)),list(itertools.chain(*y_answer_final)),list(itertools.chain(*y_model_final))
 
 
 gd = gs[cont]
@@ -198,7 +220,13 @@ c_b = mean_confidence_interval(an[1])
 
 
 c_c = mean_confidence_interval(an[2])
+cm = confusion_matrix(an[3],an[4])
+Precision = round(float(cm[0][0])/(cm[0][0]+cm[0][1]),2)
+Recall = round(float(cm[0][0])/(cm[1][0]+cm[0][0]),2)
+f1_score_cont = 2*((Precision*Recall)/(Precision+Recall))
+auprc_cont = average_precision_score(an[3], an[4])   
 
+print('continuous result',c_a,c_b,c_c)
 
 
 fixed = ['dischargestatus',  'gender', 'birthweight',
@@ -233,6 +261,15 @@ f_c = mean_confidence_interval(an[2])
 
 
 
+cm = confusion_matrix(an[3],an[4])
+Precision = round(float(cm[0][0])/(cm[0][0]+cm[0][1]),2)
+Recall = round(float(cm[0][0])/(cm[1][0]+cm[0][0]),2)
+f1_score_fixed = 2*((Precision*Recall)/(Precision+Recall))
+auprc_fixed = average_precision_score(an[3], an[4])    
+print(f1_score_fixed)
+print(auprc_fixed) 
+print('fixed result',f_a,f_b,f_c)
+
 inter = ['dischargestatus', 'mean_bp',
        'sys_bp', 'dia_bp', 'peep', 'pip', 'map', 'tidalvol',
        'minvol', 'ti', 'fio2',
@@ -261,6 +298,13 @@ an = lstm_model(26,Xtrain,Xtest,ytrain1,ytest1)
 i_a = mean_confidence_interval(an[0])
 i_b = mean_confidence_interval(an[1])
 i_c = mean_confidence_interval(an[2])
+cm = confusion_matrix(an[3],an[4])
+Precision = round(float(cm[0][0])/(cm[0][0]+cm[0][1]),2)
+Recall = round(float(cm[0][0])/(cm[1][0]+cm[0][0]),2)
+f1_score_inter = 2*((Precision*Recall)/(Precision+Recall))
+auprc_inter = average_precision_score(an[3], an[4])
+
+print('intermittent result', i_a,i_b,i_c)
 
 cont_inter = list(set(cont+inter))
 
@@ -281,6 +325,14 @@ ci_b = mean_confidence_interval(an[1])
 ci_c = mean_confidence_interval(an[2])
 
 
+cm = confusion_matrix(an[3],an[4])
+Precision = round(float(cm[0][0])/(cm[0][0]+cm[0][1]),2)
+Recall = round(float(cm[0][0])/(cm[1][0]+cm[0][0]),2)
+f1_score_continter = 2*((Precision*Recall)/(Precision+Recall))
+auprc_continter = average_precision_score(an[3], an[4])
+
+
+print('continuous internittent result',ci_a,ci_b,ci_c)
 fixed_inter = list(set(fixed+inter))
 
 
@@ -300,6 +352,16 @@ fi_b = mean_confidence_interval(an[1])
 fi_c = mean_confidence_interval(an[2])
 
 
+cm = confusion_matrix(an[3],an[4])
+Precision = round(float(cm[0][0])/(cm[0][0]+cm[0][1]),2)
+Recall = round(float(cm[0][0])/(cm[1][0]+cm[0][0]),2)
+f1_score_fixedinter = 2*((Precision*Recall)/(Precision+Recall))
+auprc_fixedinter = average_precision_score(an[3], an[4])
+
+
+
+print('fixed intermittent result',fi_a,fi_b,fi_c)
+
 cont_fixed = list(set(cont+fixed))
 
 
@@ -317,6 +379,20 @@ cf_a = mean_confidence_interval(an[0])
 cf_b = mean_confidence_interval(an[1])
 cf_c = mean_confidence_interval(an[2])
 
+cm = confusion_matrix(an[3],an[4])
+Precision = round(float(cm[0][0])/(cm[0][0]+cm[0][1]),2)
+Recall = round(float(cm[0][0])/(cm[1][0]+cm[0][0]),2)
+f1_score_contfixed = 2*((Precision*Recall)/(Precision+Recall))
+auprc_contfixed = average_precision_score(an[3], an[4])
+
+
+
+
+print('continuous fixed',cf_a,cf_b,cf_c)
+
+
+
+
 
 all_cols = list(set(cont+inter+fixed))
 
@@ -332,11 +408,30 @@ a = mean_confidence_interval(an[0])
 b = mean_confidence_interval(an[1])
 c = mean_confidence_interval(an[2])
 
-l = [["Fixed" ,f_c, f_a],["Inter ", i_c, i_a],["Cont", c_c, c_a],["Fixed + Inter", fi_c, fi_a],["Fixed + Cont", cf_c, cf_a],["Inter + Cont", ci_c, ci_a],["All", c, a]]
 
-table = PrettyTable(['Parameter', 'Training (Mean Lower Upper)', 'Testing (Mean Lower Upper)'])
 
+cm = confusion_matrix(an[3],an[4])
+Precision = round(float(cm[0][0])/(cm[0][0]+cm[0][1]),2)
+Recall = round(float(cm[0][0])/(cm[1][0]+cm[0][0]),2)
+f1_score_all = 2*((Precision*Recall)/(Precision+Recall))
+auprc_all = average_precision_score(an[3], an[4])
+
+
+print('all result',a,b,c)
+l = [["Fixed" ,f_c, f_b,f_a],["Inter ", i_c, i_b,i_a],["Cont", c_c,c_b, c_a],["Fixed + Inter", fi_c,fi_b, fi_a],["Fixed + Cont", cf_c, cf_b,cf_a],["Inter + Cont", ci_c, ci_b,ci_a],["All", c, b,a]]
+
+table = PrettyTable(['Parameter', 'Training (Mean Lower Upper)', 'Validation (Mean Lower Upper)','AUC-ROC (Mean Lower Upper)'])
 for rec in l:
     table.add_row(rec)
 
 print(table)
+
+
+print('F1 score and AUPRC score')
+print(f1_score_fixed,auprc_fixed)
+print(f1_score_inter,auprc_inter)
+print(f1_score_cont,auprc_cont)
+print(f1_score_fixedinter,auprc_fixedinter)
+print(f1_score_continter,auprc_continter)
+print(f1_score_contfixed,auprc_contfixed)
+print(f1_score_all,auprc_all)
